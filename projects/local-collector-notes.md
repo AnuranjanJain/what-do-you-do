@@ -28,7 +28,14 @@ Available endpoints:
 
 - `/health`
 - `/activity`
-- `/sessions`
+- `/sessions?date=YYYY-MM-DD`
+- `/dates`
+
+Daily session files are stored under:
+
+```text
+data/activity-sessions/YYYY-MM-DD.json
+```
 
 ## Commands
 
@@ -44,4 +51,4 @@ Start the local collector in another terminal:
 npm run collector:dev
 ```
 
-When the collector is running, the dashboard switches from simulator fallback to live desktop collector mode.
+When the collector is running, the dashboard switches from simulator fallback to live desktop collector mode. The dashboard can also view persisted history by date.

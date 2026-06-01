@@ -4,12 +4,25 @@ const collectorBaseUrl = "http://127.0.0.1:17321";
 
 type CollectorSessionsResponse = {
   ok: boolean;
+  date: string;
+  activeDateKey: string;
+  isLiveDate: boolean;
   currentSession: CollectorSession | null;
   sessions: CollectorSession[];
+  availableDates: string[];
 };
 
-export async function fetchLiveSessions(): Promise<ActivitySession[]> {
-  const response = await fetch(`${collectorBaseUrl}/sessions`, {
+export type CollectorSessionsResult = {
+  activeDateKey: string;
+  availableDates: string[];
+  date: string;
+  isLiveDate: boolean;
+  sessions: ActivitySession[];
+};
+
+export async function fetchLiveSessions(date: string): Promise<CollectorSessionsResult> {
+  const searchParams = new URLSearchParams({ date });
+  const response = await fetch(`${collectorBaseUrl}/sessions?${searchParams.toString()}`, {
     cache: "no-store",
   });
 
@@ -19,20 +32,26 @@ export async function fetchLiveSessions(): Promise<ActivitySession[]> {
 
   const data = (await response.json()) as CollectorSessionsResponse;
 
-  if (!data.ok || !Array.isArray(data.sessions) || data.sessions.length === 0) {
+  if (!data.ok || !Array.isArray(data.sessions)) {
     throw new Error("Collector has no sessions yet");
   }
 
-  return data.sessions.map((session) => ({
-    id: session.id,
-    startTime: session.startTime,
-    endTime: session.endTime,
-    appName: session.appName,
-    category: session.category,
-    subcategory: session.subcategory,
-    durationMinutes: session.durationMinutes,
-    confidence: session.confidence,
-    signalSources: session.signalSources,
-    rawContentStored: false,
-  }));
+  return {
+    activeDateKey: data.activeDateKey,
+    availableDates: data.availableDates,
+    date: data.date,
+    isLiveDate: data.isLiveDate,
+    sessions: data.sessions.map((session) => ({
+      id: session.id,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      appName: session.appName,
+      category: session.category,
+      subcategory: session.subcategory,
+      durationMinutes: session.durationMinutes,
+      confidence: session.confidence,
+      signalSources: session.signalSources,
+      rawContentStored: false,
+    })),
+  };
 }

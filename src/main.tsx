@@ -33,8 +33,10 @@ import {
   PrivacyPermission,
   buildDashboardSummary,
   formatMinutes,
+  offsetDateKey,
   privacyPermissions,
   simulateTodayActivity,
+  todayDateKey,
 } from "./domain/activity";
 import { fetchLiveSessions } from "./services/collector";
 import "./styles.css";
@@ -68,6 +70,9 @@ const agentFeatures = [
 
 function App() {
   const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>("simulator");
+  const [selectedDate, setSelectedDate] = useState(() => todayDateKey());
+  const [activeDateKey, setActiveDateKey] = useState(() => todayDateKey());
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [agentStatus, setAgentStatus] = useState<"not-installed" | "checking" | "connected">("not-installed");
   const [widgetMode, setWidgetMode] = useState<"desktop" | "mobile">("desktop");
   const [privacyExpanded, setPrivacyExpanded] = useState(false);
@@ -83,14 +88,18 @@ function App() {
       }
 
       try {
-        const liveSessions = await fetchLiveSessions();
+        const result = await fetchLiveSessions(selectedDate);
         if (!cancelled) {
-          setSessions(liveSessions);
-          setCollectorStatus("live");
+          setSessions(result.sessions);
+          setActiveDateKey(result.activeDateKey);
+          setAvailableDates(result.availableDates);
+          setCollectorStatus(result.isLiveDate ? "live" : "history");
         }
       } catch {
         if (!cancelled) {
           setSessions(simulateTodayActivity());
+          setActiveDateKey(todayDateKey());
+          setAvailableDates([]);
           setCollectorStatus("simulator");
         }
       }
@@ -103,7 +112,7 @@ function App() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [trackingPaused]);
+  }, [selectedDate, trackingPaused]);
 
   const summary = useMemo(
     () => buildDashboardSummary(sessions, privacyPermissions),
@@ -165,12 +174,18 @@ function App() {
         <header className="hero glass-panel">
           <div className="hero-copy">
             <p className="eyebrow">
-              {collectorStatus === "live" ? "Live desktop collector" : "Simulator fallback"}
+              {collectorStatus === "live"
+                ? "Live desktop collector"
+                : collectorStatus === "history"
+                  ? "Daily history"
+                  : "Simulator fallback"}
             </p>
             <h1>Today&apos;s activity command center</h1>
             <p>
               {collectorStatus === "live"
                 ? "The dashboard is reading live local Windows foreground app and idle signals."
+                : collectorStatus === "history"
+                  ? `Showing persisted local sessions for ${selectedDate}.`
                 : "Start the local collector to replace simulated sessions with real desktop activity."}
             </p>
           </div>
@@ -189,12 +204,36 @@ function App() {
           </div>
         </header>
 
+        <section className="date-strip glass-panel" aria-label="Date controls">
+          <div>
+            <span>Viewing date</span>
+            <strong>{selectedDate}</strong>
+          </div>
+          <div className="date-actions">
+            <button onClick={() => setSelectedDate(activeDateKey)}>Today</button>
+            <button onClick={() => setSelectedDate(offsetDateKey(activeDateKey, -1))}>Yesterday</button>
+            <button onClick={() => setSelectedDate(offsetDateKey(selectedDate, -1))}>Previous</button>
+            <button onClick={() => setSelectedDate(offsetDateKey(selectedDate, 1))}>Next</button>
+            <input
+              aria-label="Pick activity date"
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+            />
+          </div>
+          <small>
+            {availableDates.length > 0
+              ? `Saved days: ${availableDates.slice(0, 4).join(", ")}`
+              : "No saved daily files yet"}
+          </small>
+        </section>
+
         <section className="metrics-grid" id="today">
             <MetricCard
             icon={TimerReset}
             label="Tracked time"
             value={formatMinutes(summary.totalMinutes)}
-            subtext={`${sessions.length} ${collectorStatus} sessions`}
+            subtext={`${sessions.length} sessions on ${selectedDate}`}
             tone="violet"
           />
           <MetricCard
@@ -434,11 +473,21 @@ function App() {
               </button>
             </div>
             <div className="settings-list">
-              <SettingRow label="Data mode" value={collectorStatus === "live" ? "Live collector" : "Simulator fallback"} />
+              <SettingRow
+                label="Data mode"
+                value={
+                  collectorStatus === "live"
+                    ? "Live collector"
+                    : collectorStatus === "history"
+                      ? "Daily history"
+                      : "Simulator fallback"
+                }
+              />
+              <SettingRow label="Selected date" value={selectedDate} />
+              <SettingRow label="Active date" value={activeDateKey} />
               <SettingRow label="Collector API" value="127.0.0.1:17321" />
               <SettingRow label="Refresh interval" value="3 seconds" />
-              <SettingRow label="Desktop wrapper" value="Tauri scaffolded" />
-              <SettingRow label="Raw private content" value="Never stored" />
+              <SettingRow label="Storage" value="Daily JSON files" />
             </div>
           </section>
         </div>

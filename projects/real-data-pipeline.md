@@ -110,7 +110,14 @@ If the app/category/subcategory changes, the current session closes and a new se
 
 ## Stage 6: Local store
 
-Development storage currently uses local JSON files under `data/`.
+Development storage currently uses daily local JSON files under `data/activity-sessions/`.
+
+Example:
+
+```text
+data/activity-sessions/2026-06-01.json
+data/activity-sessions/2026-06-02.json
+```
 
 Planned production storage:
 
@@ -123,9 +130,10 @@ The local collector exposes:
 
 - `GET /health`
 - `GET /activity`
-- `GET /sessions`
+- `GET /sessions?date=YYYY-MM-DD`
+- `GET /dates`
 
-The dashboard polls `/sessions`. If the collector is not running, it falls back to simulator data.
+The dashboard polls `/sessions?date=YYYY-MM-DD`. If the selected date is the active date, the response includes the live current session. If the selected date is older, the response comes from persisted daily history. If the collector is not running, the dashboard falls back to simulator data.
 
 ## Real-data milestone
 
@@ -135,6 +143,8 @@ Current real data:
 - Idle state
 - Real local session timeline
 - Persisted session history
+- Daily session files
+- Date-aware dashboard view
 
 Next real data:
 

@@ -28,7 +28,7 @@ export type ActivitySession = {
   rawContentStored: false;
 };
 
-export type CollectorStatus = "live" | "simulator";
+export type CollectorStatus = "live" | "history" | "simulator";
 
 export type CollectorSession = ActivitySession & {
   fingerprint?: string;
@@ -170,6 +170,16 @@ export function simulateTodayActivity(): ActivitySession[] {
   return todaySessions;
 }
 
+export function todayDateKey(): string {
+  return formatDateKey(new Date());
+}
+
+export function offsetDateKey(dateKey: string, offsetDays: number): string {
+  const date = new Date(`${dateKey}T12:00:00`);
+  date.setDate(date.getDate() + offsetDays);
+  return formatDateKey(date);
+}
+
 export function buildDashboardSummary(
   sessions: ActivitySession[],
   permissions: PrivacyPermission[],
@@ -214,7 +224,7 @@ export function buildDashboardSummary(
     privacyScore,
     categorySummaries,
     focusBars: buildFocusBars(sessions),
-    currentSession: sessions[0],
+    currentSession: sessions[0] ?? createEmptySession(),
   };
 }
 
@@ -245,4 +255,26 @@ function buildFocusBars(sessions: ActivitySession[]): number[] {
   });
 
   return bars;
+}
+
+function formatDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function createEmptySession(): ActivitySession {
+  return {
+    id: "empty-session",
+    startTime: "--:--",
+    endTime: "--:--",
+    appName: "No activity",
+    category: "idle",
+    subcategory: "No sessions recorded for this date",
+    durationMinutes: 0,
+    confidence: 0,
+    signalSources: ["idle-detector"],
+    rawContentStored: false,
+  };
 }
