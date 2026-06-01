@@ -123,6 +123,7 @@ function App() {
   const hasData = sessions.length > 0;
   const isFutureDate = selectedDate > activeDateKey;
   const isToday = selectedDate === activeDateKey;
+  const visibleTimeline = sessions.slice(0, 15);
 
   return (
     <main className="app-shell">
@@ -321,13 +322,16 @@ function App() {
               <div>
                 <p className="eyebrow">Activity timeline</p>
                 <h2>Detected context</h2>
+                <span className="section-note">
+                  Showing top {Math.min(visibleTimeline.length, 15)} of {sessions.length} entries
+                </span>
               </div>
               <button className="text-button">Correct labels</button>
             </div>
 
             {hasData ? (
               <div className="timeline">
-                {sessions.map((item) => (
+                {visibleTimeline.map((item) => (
                   <TimelineRow key={item.id} item={item} />
                 ))}
               </div>

@@ -424,6 +424,13 @@ h2 {
   margin-bottom: 18px;
 }
 
+.section-note {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+
 .icon-button,
 .text-button {
   border: 1px solid rgba(255, 255, 255, 0.16);
