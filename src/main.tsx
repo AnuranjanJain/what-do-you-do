@@ -124,6 +124,7 @@ function App() {
   const isFutureDate = selectedDate > activeDateKey;
   const isToday = selectedDate === activeDateKey;
   const visibleTimeline = sessions.slice(0, 15);
+  const logEntries = sessions.slice(15);
 
   return (
     <main className="app-shell">
@@ -337,6 +338,33 @@ function App() {
               </div>
             ) : (
               <NoDataState selectedDate={selectedDate} />
+            )}
+          </section>
+
+          <section className="panel glass-panel logs-panel">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Activity logs</p>
+                <h2>Older entries</h2>
+                <span className="section-note">
+                  {logEntries.length > 0
+                    ? `${logEntries.length} entries after the top 15`
+                    : "No extra entries beyond the timeline"}
+                </span>
+              </div>
+            </div>
+
+            {logEntries.length > 0 ? (
+              <div className="log-list">
+                {logEntries.map((item) => (
+                  <LogRow key={`log-${item.id}`} item={item} />
+                ))}
+              </div>
+            ) : (
+              <div className="compact-empty-state">
+                <strong>No logs yet</strong>
+                <span>Older activity will appear here once the day has more than 15 entries.</span>
+              </div>
             )}
           </section>
 
@@ -736,6 +764,20 @@ function TimelineRow({ item }: { item: ActivitySession }) {
           <small>{item.confidence}%</small>
         </div>
       </div>
+    </article>
+  );
+}
+
+function LogRow({ item }: { item: ActivitySession }) {
+  const meta = categoryMeta[item.category];
+
+  return (
+    <article className="log-row">
+      <time>{item.startTime}</time>
+      <strong>{item.appName}</strong>
+      <span>{meta.label}</span>
+      <small>{item.subcategory}</small>
+      <em>{formatMinutes(item.durationMinutes)}</em>
     </article>
   );
 }
