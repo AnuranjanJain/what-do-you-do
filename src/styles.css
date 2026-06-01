@@ -326,6 +326,16 @@ h2 {
   padding: 0 12px;
 }
 
+.date-actions button.active {
+  border-color: rgba(158, 231, 255, 0.55);
+  background: rgba(34, 211, 238, 0.2);
+}
+
+.date-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .date-actions input {
   padding: 0 10px;
   color-scheme: dark;
@@ -607,6 +617,10 @@ h2 {
   background: rgba(255, 255, 255, 0.07);
 }
 
+.phone-list-row.empty {
+  min-height: 72px;
+}
+
 .phone-list-row > span {
   width: 10px;
   height: 34px;
@@ -736,6 +750,38 @@ h2 {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  padding: 28px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(5, 2, 18, 0.2);
+  text-align: center;
+}
+
+.empty-state svg {
+  color: #9ee7ff;
+  margin-bottom: 12px;
+}
+
+.empty-state strong,
+.empty-state p {
+  display: block;
+}
+
+.empty-state strong {
+  font-size: 20px;
+}
+
+.empty-state p {
+  max-width: 420px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.55;
 }
 
 .timeline-row time {

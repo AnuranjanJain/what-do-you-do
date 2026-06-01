@@ -246,6 +246,10 @@ function sumByCategory(sessions: ActivitySession[], category: ActivityCategory):
 }
 
 function buildFocusBars(sessions: ActivitySession[]): number[] {
+  if (sessions.length === 0) {
+    return Array.from({ length: 12 }, () => 0);
+  }
+
   const bars = Array.from({ length: 12 }, (_, index) => {
     const session = sessions[index % sessions.length];
     const activityWeight = session.category === "idle" ? 18 : session.category === "gaming" ? 48 : 68;

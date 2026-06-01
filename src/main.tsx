@@ -120,6 +120,9 @@ function App() {
   );
   const current = summary.currentSession;
   const currentMeta = categoryMeta[current.category];
+  const hasData = sessions.length > 0;
+  const isFutureDate = selectedDate > activeDateKey;
+  const isToday = selectedDate === activeDateKey;
 
   return (
     <main className="app-shell">
@@ -190,13 +193,14 @@ function App() {
             </p>
           </div>
           <div className="hero-card">
-            <span>Current session</span>
+            <span>{hasData ? "Current session" : "No data"}</span>
             <strong>
-              {currentMeta.label}: {current.subcategory}
+              {hasData ? `${currentMeta.label}: ${current.subcategory}` : selectedDate}
             </strong>
             <small>
-              {current.appName} - {formatMinutes(current.durationMinutes)} focused,{" "}
-              {current.confidence}% confidence
+              {hasData
+                ? `${current.appName} - ${formatMinutes(current.durationMinutes)} focused, ${current.confidence}% confidence`
+                : "No activity sessions were recorded for this day."}
             </small>
             <div className="session-meter" aria-hidden="true">
               <span style={{ width: `${current.confidence}%` }} />
@@ -210,19 +214,30 @@ function App() {
             <strong>{selectedDate}</strong>
           </div>
           <div className="date-actions">
-            <button onClick={() => setSelectedDate(activeDateKey)}>Today</button>
+            <button className={isToday ? "active" : ""} onClick={() => setSelectedDate(activeDateKey)}>
+              Today
+            </button>
             <button onClick={() => setSelectedDate(offsetDateKey(activeDateKey, -1))}>Yesterday</button>
-            <button onClick={() => setSelectedDate(offsetDateKey(selectedDate, -1))}>Previous</button>
-            <button onClick={() => setSelectedDate(offsetDateKey(selectedDate, 1))}>Next</button>
+            <button onClick={() => setSelectedDate(offsetDateKey(activeDateKey, -2))}>2 days ago</button>
+            <button onClick={() => setSelectedDate(offsetDateKey(selectedDate, -1))}>Previous day</button>
+            <button
+              disabled={selectedDate >= activeDateKey}
+              onClick={() => setSelectedDate(offsetDateKey(selectedDate, 1))}
+            >
+              Next day
+            </button>
             <input
               aria-label="Pick activity date"
+              max={activeDateKey}
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
             />
           </div>
           <small>
-            {availableDates.length > 0
+            {isFutureDate
+              ? "Future dates are disabled."
+              : availableDates.length > 0
               ? `Saved days: ${availableDates.slice(0, 4).join(", ")}`
               : "No saved daily files yet"}
           </small>
@@ -310,11 +325,15 @@ function App() {
               <button className="text-button">Correct labels</button>
             </div>
 
-            <div className="timeline">
-              {sessions.map((item) => (
-                <TimelineRow key={item.id} item={item} />
-              ))}
-            </div>
+            {hasData ? (
+              <div className="timeline">
+                {sessions.map((item) => (
+                  <TimelineRow key={item.id} item={item} />
+                ))}
+              </div>
+            ) : (
+              <NoDataState selectedDate={selectedDate} />
+            )}
           </section>
 
           <section className="panel glass-panel" id="privacy">
@@ -512,6 +531,7 @@ function MobileDashboard({
   const currentMeta = categoryMeta[current.category];
   const CurrentIcon = currentMeta.icon;
   const compactSessions = sessions.slice(0, 3);
+  const hasData = sessions.length > 0;
 
   return (
     <div className="phone-shell" aria-label="Mobile dashboard preview">
@@ -523,9 +543,9 @@ function MobileDashboard({
         <div className={`phone-now-icon ${currentMeta.color}`}>
           <CurrentIcon size={20} />
         </div>
-        <span>Right now</span>
-        <strong>{currentMeta.label}</strong>
-        <small>{current.subcategory}</small>
+        <span>{hasData ? "Right now" : "No data"}</span>
+        <strong>{hasData ? currentMeta.label : "Empty day"}</strong>
+        <small>{hasData ? current.subcategory : "No sessions recorded"}</small>
       </div>
       <div className="phone-stats">
         <div>
@@ -542,7 +562,7 @@ function MobileDashboard({
         </div>
       </div>
       <div className="phone-list">
-        {compactSessions.map((session) => {
+        {compactSessions.length > 0 ? compactSessions.map((session) => {
           const meta = categoryMeta[session.category];
 
           return (
@@ -555,7 +575,15 @@ function MobileDashboard({
               <time>{formatMinutes(session.durationMinutes)}</time>
             </div>
           );
-        })}
+        }) : (
+          <div className="phone-list-row empty">
+            <span className="muted" />
+            <div>
+              <strong>No timeline</strong>
+              <small>Pick another date or keep collector running.</small>
+            </div>
+          </div>
+        )}
       </div>
       <div className="phone-bottom-nav" aria-hidden="true">
         <span className="active" />
@@ -563,6 +591,19 @@ function MobileDashboard({
         <span />
         <span />
       </div>
+    </div>
+  );
+}
+
+function NoDataState({ selectedDate }: { selectedDate: string }) {
+  return (
+    <div className="empty-state">
+      <Clock3 size={28} />
+      <strong>No data for {selectedDate}</strong>
+      <p>
+        The collector has no saved activity sessions for this date yet. Choose a saved day,
+        keep the collector running, or return to Today.
+      </p>
     </div>
   );
 }
