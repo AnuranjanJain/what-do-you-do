@@ -336,6 +336,17 @@ function App() {
             <ActivityMix summary={summary.categorySummaries} totalMinutes={summary.totalMinutes} />
           </section>
 
+          <section className="panel glass-panel insights-panel">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Daily insights</p>
+                <h2>What stands out</h2>
+              </div>
+              <Zap size={20} />
+            </div>
+            <DailyInsightsPanel summary={summary} />
+          </section>
+
           <section className="panel glass-panel mobile-dashboard-panel">
             <div className="panel-heading">
               <div>
@@ -761,6 +772,53 @@ function ActivityMix({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function DailyInsightsPanel({ summary }: { summary: ReturnType<typeof buildDashboardSummary> }) {
+  const strongestLabel = summary.insights.strongestCategory === "none"
+    ? "No data"
+    : categoryMeta[summary.insights.strongestCategory].label;
+
+  return (
+    <div className="insights-stack">
+      <div className="insight-summary-grid">
+        <div>
+          <span>Data quality</span>
+          <strong>{summary.insights.dataQuality}%</strong>
+        </div>
+        <div>
+          <span>Corrections</span>
+          <strong>{summary.insights.correctedCount}</strong>
+        </div>
+        <div>
+          <span>Low confidence</span>
+          <strong>{summary.insights.lowConfidenceCount}</strong>
+        </div>
+        <div>
+          <span>Strongest mode</span>
+          <strong>{strongestLabel}</strong>
+        </div>
+      </div>
+
+      <div className="top-app-list">
+        <span className="section-note">Top apps by tracked time</span>
+        {summary.insights.topApps.length > 0 ? (
+          summary.insights.topApps.map((app) => (
+            <div className="top-app-row" key={app.appName}>
+              <strong>{app.appName}</strong>
+              <span>{app.sessions} sessions</span>
+              <em>{formatMinutes(app.minutes)}</em>
+            </div>
+          ))
+        ) : (
+          <div className="compact-empty-state">
+            <strong>No app insights yet</strong>
+            <span>Keep the collector running to build a useful daily summary.</span>
+          </div>
+        )}
       </div>
     </div>
   );

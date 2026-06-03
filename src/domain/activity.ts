@@ -26,6 +26,8 @@ export type ActivitySession = {
   confidence: number;
   signalSources: SignalSource[];
   rawContentStored: false;
+  correctedAt?: string;
+  correctionSource?: "user";
 };
 
 export type CollectorStatus = "live" | "history" | "simulator";
@@ -56,6 +58,21 @@ export type DashboardSummary = {
   categorySummaries: CategorySummary[];
   focusBars: number[];
   currentSession: ActivitySession;
+  insights: DailyInsights;
+};
+
+export type AppSummary = {
+  appName: string;
+  minutes: number;
+  sessions: number;
+};
+
+export type DailyInsights = {
+  correctedCount: number;
+  dataQuality: number;
+  lowConfidenceCount: number;
+  strongestCategory: ActivityCategory | "none";
+  topApps: AppSummary[];
 };
 
 const todaySessions: ActivitySession[] = [
@@ -225,6 +242,7 @@ export function buildDashboardSummary(
     categorySummaries,
     focusBars: buildFocusBars(sessions),
     currentSession: sessions[0] ?? createEmptySession(),
+    insights: buildDailyInsights(sessions, categorySummaries),
   };
 }
 
@@ -259,6 +277,50 @@ function buildFocusBars(sessions: ActivitySession[]): number[] {
   });
 
   return bars;
+}
+
+function buildDailyInsights(
+  sessions: ActivitySession[],
+  categorySummaries: CategorySummary[],
+): DailyInsights {
+  const correctedCount = sessions.filter((session) =>
+    session.signalSources.includes("user-correction") || session.correctionSource === "user",
+  ).length;
+  const lowConfidenceCount = sessions.filter((session) => session.confidence < 75).length;
+  const averageConfidence = sessions.length === 0
+    ? 0
+    : Math.round(sessions.reduce((sum, session) => sum + session.confidence, 0) / sessions.length);
+  const strongestCategory = categorySummaries.reduce<CategorySummary | null>((best, current) => {
+    if (!best || current.minutes > best.minutes) return current;
+    return best;
+  }, null);
+
+  return {
+    correctedCount,
+    dataQuality: averageConfidence,
+    lowConfidenceCount,
+    strongestCategory: strongestCategory && strongestCategory.minutes > 0 ? strongestCategory.category : "none",
+    topApps: buildTopApps(sessions),
+  };
+}
+
+function buildTopApps(sessions: ActivitySession[]): AppSummary[] {
+  const appMap = new Map<string, AppSummary>();
+
+  sessions.forEach((session) => {
+    const existing = appMap.get(session.appName) ?? {
+      appName: session.appName,
+      minutes: 0,
+      sessions: 0,
+    };
+    existing.minutes += session.durationMinutes;
+    existing.sessions += 1;
+    appMap.set(session.appName, existing);
+  });
+
+  return Array.from(appMap.values())
+    .sort((left, right) => right.minutes - left.minutes)
+    .slice(0, 5);
 }
 
 function formatDateKey(date: Date): string {

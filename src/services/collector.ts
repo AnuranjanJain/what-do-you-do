@@ -50,6 +50,8 @@ export async function fetchLiveSessions(date: string): Promise<CollectorSessions
       subcategory: session.subcategory,
       durationMinutes: session.durationMinutes,
       confidence: session.confidence,
+      correctedAt: session.correctedAt,
+      correctionSource: session.correctionSource,
       signalSources: session.signalSources,
       rawContentStored: false,
     })),

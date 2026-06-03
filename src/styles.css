@@ -411,6 +411,10 @@ h2 {
   grid-row: span 2;
 }
 
+.insights-panel {
+  grid-row: span 2;
+}
+
 .mobile-dashboard-panel {
   grid-row: span 2;
 }
@@ -530,6 +534,75 @@ h2 {
   grid-template-columns: 156px minmax(0, 1fr);
   align-items: center;
   gap: 18px;
+}
+
+.insights-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.insight-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.insight-summary-grid div {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(5, 2, 18, 0.2);
+}
+
+.insight-summary-grid span,
+.insight-summary-grid strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.insight-summary-grid span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.insight-summary-grid strong {
+  margin-top: 8px;
+  font-size: 22px;
+}
+
+.top-app-list {
+  display: grid;
+  gap: 8px;
+}
+
+.top-app-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.top-app-row strong {
+  overflow-wrap: anywhere;
+}
+
+.top-app-row span,
+.top-app-row em {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+}
+
+.top-app-row em {
+  font-style: normal;
+  font-weight: 900;
 }
 
 .phone-shell {
@@ -1173,7 +1246,8 @@ h2 {
 
   .hero-copy,
   .timeline-panel,
-  .logs-panel {
+  .logs-panel,
+  .insights-panel {
     grid-column: 1 / -1;
   }
 
@@ -1182,6 +1256,10 @@ h2 {
   }
 
   .logs-panel {
+    grid-row: auto;
+  }
+
+  .insights-panel {
     grid-row: auto;
   }
 }
@@ -1203,6 +1281,11 @@ h2 {
 
   .date-actions {
     justify-content: flex-start;
+  }
+
+  .insight-summary-grid,
+  .top-app-row {
+    grid-template-columns: 1fr;
   }
 
   .hero {
