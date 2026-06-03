@@ -1,4 +1,4 @@
-import { ActivitySession, CollectorSession } from "../domain/activity";
+import { ActivityCategory, ActivitySession, CollectorSession } from "../domain/activity";
 
 const collectorBaseUrl = "http://127.0.0.1:17321";
 
@@ -54,4 +54,30 @@ export async function fetchLiveSessions(date: string): Promise<CollectorSessions
       rawContentStored: false,
     })),
   };
+}
+
+export async function correctLiveSession({
+  category,
+  date,
+  sessionId,
+  subcategory,
+}: {
+  category: ActivityCategory;
+  date: string;
+  sessionId: string;
+  subcategory: string;
+}): Promise<void> {
+  const response = await fetch(`${collectorBaseUrl}/sessions/correct`, {
+    body: JSON.stringify({ category, date, sessionId, subcategory }),
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: `Collector responded with ${response.status}` }));
+    throw new Error(error.error ?? "Unable to correct session");
+  }
 }

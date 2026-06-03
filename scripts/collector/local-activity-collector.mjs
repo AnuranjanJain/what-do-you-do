@@ -15,6 +15,7 @@ const port = Number.parseInt(process.env.WDYD_COLLECTOR_PORT ?? "17321", 10);
 const pollMs = Number.parseInt(process.env.WDYD_COLLECTOR_POLL_MS ?? "2500", 10);
 const idleThresholdMs = Number.parseInt(process.env.WDYD_IDLE_THRESHOLD_MS ?? "60000", 10);
 const maxSessions = 96;
+const activityCategories = new Set(["coding", "browsing", "communication", "gaming", "watching", "idle"]);
 
 let latestSnapshot = null;
 let currentSession = null;
@@ -43,6 +44,11 @@ async function migrateLegacyStore() {
   try {
     const legacy = JSON.parse(await readFile(legacySessionStorePath, "utf-8"));
     if (!legacy.currentSession && !Array.isArray(legacy.sessions)) return;
+    const legacyDate = legacy.date ?? legacy.currentSession?.dateKey ?? legacy.sessions?.[0]?.dateKey;
+
+    if (legacyDate && legacyDate !== activeDateKey) {
+      return;
+    }
 
     const payload = buildPayload(
       activeDateKey,
@@ -76,6 +82,59 @@ async function readSessionsForDate(dateKey) {
   } catch {
     return { currentSession: null, sessions: [] };
   }
+}
+
+async function correctSession(dateKey, sessionId, patch) {
+  const stored = dateKey === activeDateKey
+    ? { currentSession, sessions }
+    : await readSessionsForDate(dateKey);
+
+  const result = updateSessionCollection(stored, sessionId, patch);
+
+  if (!result.updated) {
+    return { ok: false, error: "Session not found" };
+  }
+
+  if (dateKey === activeDateKey) {
+    currentSession = result.currentSession;
+    sessions = result.sessions;
+    await persistActiveDate();
+  } else {
+    await persistDate(dateKey, result.currentSession, result.sessions);
+  }
+
+  return { ok: true, session: result.session };
+}
+
+function updateSessionCollection(stored, sessionId, patch) {
+  let updated = false;
+  let correctedSession = null;
+
+  function applyPatch(session) {
+    if (!session || session.id !== sessionId) return session;
+
+    updated = true;
+    correctedSession = {
+      ...session,
+      ...patch,
+      confidence: 100,
+      correctedAt: new Date().toISOString(),
+      correctionSource: "user",
+      signalSources: Array.from(new Set([...(session.signalSources ?? []), "user-correction"])),
+    };
+    correctedSession.fingerprint = `${correctedSession.appName}:${correctedSession.category}:${correctedSession.subcategory}`;
+    return correctedSession;
+  }
+
+  const nextCurrentSession = applyPatch(stored.currentSession);
+  const nextSessions = stored.sessions.map(applyPatch);
+
+  return {
+    currentSession: nextCurrentSession,
+    session: correctedSession,
+    sessions: nextSessions,
+    updated,
+  };
 }
 
 async function persistActiveDate() {
@@ -304,6 +363,54 @@ function addDateKey(session, dateKey) {
   return { ...session, dateKey: session.dateKey ?? dateKey };
 }
 
+function sanitizeCorrectionPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, error: "Missing JSON payload" };
+  }
+
+  const date = String(payload.date ?? "");
+  const sessionId = String(payload.sessionId ?? "");
+  const category = String(payload.category ?? "");
+  const subcategory = String(payload.subcategory ?? "").trim().slice(0, 90);
+
+  if (!isValidDateKey(date)) {
+    return { ok: false, error: "Invalid date. Use YYYY-MM-DD." };
+  }
+
+  if (!sessionId) {
+    return { ok: false, error: "Missing sessionId" };
+  }
+
+  if (!activityCategories.has(category)) {
+    return { ok: false, error: "Invalid activity category" };
+  }
+
+  if (!subcategory) {
+    return { ok: false, error: "Subcategory is required" };
+  }
+
+  return {
+    ok: true,
+    date,
+    sessionId,
+    patch: {
+      category,
+      subcategory,
+    },
+  };
+}
+
+async function readJsonBody(request) {
+  const chunks = [];
+
+  for await (const chunk of request) {
+    chunks.push(chunk);
+  }
+
+  const text = Buffer.concat(chunks).toString("utf-8");
+  return text ? JSON.parse(text) : {};
+}
+
 async function listAvailableDates() {
   try {
     const files = await readdir(sessionsDir);
@@ -320,7 +427,7 @@ async function listAvailableDates() {
 function jsonResponse(response, statusCode, body) {
   response.writeHead(statusCode, {
     "Access-Control-Allow-Origin": "http://127.0.0.1:5173",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
@@ -391,6 +498,26 @@ const server = createServer(async (request, response) => {
       sessions: allSessions,
       availableDates: await listAvailableDates(),
     });
+    return;
+  }
+
+  if (requestUrl.pathname === "/sessions/correct" && request.method === "POST") {
+    try {
+      const payload = sanitizeCorrectionPayload(await readJsonBody(request));
+
+      if (!payload.ok) {
+        jsonResponse(response, 400, payload);
+        return;
+      }
+
+      const result = await correctSession(payload.date, payload.sessionId, payload.patch);
+      jsonResponse(response, result.ok ? 200 : 404, result);
+    } catch (error) {
+      jsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to apply correction",
+      });
+    }
     return;
   }
 

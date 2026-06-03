@@ -39,6 +39,7 @@ import {
   todayDateKey,
 } from "./domain/activity";
 import { fetchLiveSessions } from "./services/collector";
+import { correctLiveSession } from "./services/collector";
 import "./styles.css";
 
 const categoryMeta: Record<
@@ -68,6 +69,15 @@ const agentFeatures = [
   { name: "Job tracking", unlockedStatus: "Ready through AI Agent", icon: BriefcaseBusiness },
 ];
 
+const categoryOptions: ActivityCategory[] = [
+  "coding",
+  "browsing",
+  "communication",
+  "gaming",
+  "watching",
+  "idle",
+];
+
 function App() {
   const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>("simulator");
   const [selectedDate, setSelectedDate] = useState(() => todayDateKey());
@@ -77,6 +87,8 @@ function App() {
   const [widgetMode, setWidgetMode] = useState<"desktop" | "mobile">("desktop");
   const [privacyExpanded, setPrivacyExpanded] = useState(false);
   const [trackingPaused, setTrackingPaused] = useState(false);
+  const [correctionMode, setCorrectionMode] = useState(false);
+  const [correctionMessage, setCorrectionMessage] = useState("");
   const [sessions, setSessions] = useState<ActivitySession[]>(() => simulateTodayActivity());
 
   useEffect(() => {
@@ -125,6 +137,29 @@ function App() {
   const isToday = selectedDate === activeDateKey;
   const visibleTimeline = sessions.slice(0, 15);
   const logEntries = sessions.slice(15);
+
+  async function refreshSelectedDate() {
+    const result = await fetchLiveSessions(selectedDate);
+    setSessions(result.sessions);
+    setActiveDateKey(result.activeDateKey);
+    setAvailableDates(result.availableDates);
+    setCollectorStatus(result.isLiveDate ? "live" : "history");
+  }
+
+  async function handleCorrection(sessionId: string, category: ActivityCategory, subcategory: string) {
+    try {
+      await correctLiveSession({
+        category,
+        date: selectedDate,
+        sessionId,
+        subcategory,
+      });
+      await refreshSelectedDate();
+      setCorrectionMessage("Label saved locally.");
+    } catch (error) {
+      setCorrectionMessage(error instanceof Error ? error.message : "Unable to save correction.");
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -327,13 +362,21 @@ function App() {
                   Showing top {Math.min(visibleTimeline.length, 15)} of {sessions.length} entries
                 </span>
               </div>
-              <button className="text-button">Correct labels</button>
+              <button className="text-button" onClick={() => setCorrectionMode((value) => !value)}>
+                {correctionMode ? "Done" : "Correct labels"}
+              </button>
             </div>
+            {correctionMessage && <div className="inline-status">{correctionMessage}</div>}
 
             {hasData ? (
               <div className="timeline">
                 {visibleTimeline.map((item) => (
-                  <TimelineRow key={item.id} item={item} />
+                  <TimelineRow
+                    correctionMode={correctionMode}
+                    item={item}
+                    key={item.id}
+                    onCorrect={handleCorrection}
+                  />
                 ))}
               </div>
             ) : (
@@ -742,9 +785,31 @@ function PermissionRow({ permission }: { permission: PrivacyPermission }) {
   );
 }
 
-function TimelineRow({ item }: { item: ActivitySession }) {
+function TimelineRow({
+  correctionMode,
+  item,
+  onCorrect,
+}: {
+  correctionMode: boolean;
+  item: ActivitySession;
+  onCorrect: (sessionId: string, category: ActivityCategory, subcategory: string) => Promise<void>;
+}) {
   const meta = categoryMeta[item.category];
   const Icon = meta.icon;
+  const [category, setCategory] = useState<ActivityCategory>(item.category);
+  const [subcategory, setSubcategory] = useState(item.subcategory);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setCategory(item.category);
+    setSubcategory(item.subcategory);
+  }, [item.category, item.subcategory]);
+
+  async function saveCorrection() {
+    setSaving(true);
+    await onCorrect(item.id, category, subcategory);
+    setSaving(false);
+  }
 
   return (
     <article className="timeline-row">
@@ -764,6 +829,29 @@ function TimelineRow({ item }: { item: ActivitySession }) {
           <small>{item.confidence}%</small>
         </div>
       </div>
+      {correctionMode && (
+        <div className="correction-form">
+          <select
+            aria-label={`Category for ${item.appName}`}
+            value={category}
+            onChange={(event) => setCategory(event.target.value as ActivityCategory)}
+          >
+            {categoryOptions.map((option) => (
+              <option key={option} value={option}>
+                {categoryMeta[option].label}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label={`Subcategory for ${item.appName}`}
+            value={subcategory}
+            onChange={(event) => setSubcategory(event.target.value)}
+          />
+          <button disabled={saving || !subcategory.trim()} onClick={saveCorrection}>
+            {saving ? "Saving" : "Save"}
+          </button>
+        </div>
+      )}
     </article>
   );
 }

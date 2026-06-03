@@ -435,6 +435,17 @@ h2 {
   font-size: 12px;
 }
 
+.inline-status {
+  margin: -6px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(158, 231, 255, 0.24);
+  border-radius: 12px;
+  color: #9ee7ff;
+  background: rgba(34, 211, 238, 0.08);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .icon-button,
 .text-button {
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -761,6 +772,40 @@ h2 {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.correction-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(120px, 0.35fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.correction-form select,
+.correction-form input,
+.correction-form button {
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #ffffff;
+  background: rgba(5, 2, 18, 0.32);
+}
+
+.correction-form select,
+.correction-form input {
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.correction-form button {
+  padding: 0 14px;
+  font-weight: 900;
+}
+
+.correction-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .log-list {
@@ -1181,6 +1226,10 @@ h2 {
 
   .timeline-row {
     grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .correction-form {
+    grid-template-columns: 1fr;
   }
 
   .log-row {
