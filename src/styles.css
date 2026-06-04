@@ -432,6 +432,14 @@ h2 {
   margin-bottom: 18px;
 }
 
+.panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .section-note {
   display: block;
   margin-top: 6px;
@@ -483,6 +491,11 @@ h2 {
 .text-button.primary {
   border-color: transparent;
   background: linear-gradient(135deg, #a855f7, #22d3ee);
+}
+
+.text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .segmented-control {
@@ -1282,6 +1295,16 @@ h2 {
   box-shadow: 0 0 20px rgba(251, 191, 36, 0.55);
 }
 
+.agent-status.locked > span {
+  background: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.55);
+}
+
+.agent-status.syncing > span {
+  background: #22d3ee;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.55);
+}
+
 .agent-status.connected > span {
   background: #34d399;
   box-shadow: 0 0 20px rgba(52, 211, 153, 0.55);
@@ -1310,6 +1333,17 @@ h2 {
 .agent-feature strong,
 .agent-feature span {
   display: block;
+}
+
+.agent-sync-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.agent-message {
+  margin: 0 0 12px;
 }
 
 .agent-feature span {
@@ -1455,6 +1489,7 @@ h2 {
   }
 
   .insight-summary-grid,
+  .agent-sync-grid,
   .top-app-row {
     grid-template-columns: 1fr;
   }

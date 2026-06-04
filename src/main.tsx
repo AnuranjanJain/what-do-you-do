@@ -39,6 +39,7 @@ import {
   simulateTodayActivity,
   todayDateKey,
 } from "./domain/activity";
+import { AiosLiveStatus, AiosStatus, checkAiosConnection, getAiosBaseUrl, syncActivitySessions } from "./services/aios";
 import { correctLiveSession, fetchLiveSessions, saveSessionNote } from "./services/collector";
 import "./styles.css";
 
@@ -91,7 +92,10 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(() => todayDateKey());
   const [activeDateKey, setActiveDateKey] = useState(() => todayDateKey());
   const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [agentStatus, setAgentStatus] = useState<"not-installed" | "checking" | "connected">("not-installed");
+  const [agentStatus, setAgentStatus] = useState<AiosStatus>("not-installed");
+  const [agentLive, setAgentLive] = useState<AiosLiveStatus | null>(null);
+  const [agentMessage, setAgentMessage] = useState("AiOS has not been checked in this session.");
+  const [agentLastSync, setAgentLastSync] = useState("");
   const [widgetMode, setWidgetMode] = useState<"desktop" | "mobile">("desktop");
   const [privacyExpanded, setPrivacyExpanded] = useState(false);
   const [trackingPaused, setTrackingPaused] = useState(false);
@@ -187,15 +191,56 @@ function App() {
 
   async function checkProjectAiAgent() {
     setAgentStatus("checking");
+    setAgentMessage("Checking the local AiOS Assistant API.");
 
     try {
-      await fetch(projectAiAgent.localUrl, {
-        cache: "no-store",
-        mode: "no-cors",
-      });
+      const liveStatus = await checkAiosConnection();
+      setAgentLive(liveStatus);
+
+      if (liveStatus.locked) {
+        setAgentStatus("locked");
+        setAgentMessage("AiOS is running, but it is locked. Open AiOS and enter the local PIN.");
+        return;
+      }
+
       setAgentStatus("connected");
-    } catch {
+      setAgentMessage("AiOS is connected. You can sync privacy-safe activity sessions.");
+      await syncCurrentSessions();
+    } catch (error) {
+      setAgentLive(null);
       setAgentStatus("not-installed");
+      setAgentMessage(error instanceof Error ? error.message : "Unable to reach local AiOS Assistant.");
+    }
+  }
+
+  async function syncCurrentSessions() {
+    if (!hasData) {
+      setAgentMessage("No activity sessions available to sync for this date.");
+      return;
+    }
+
+    setAgentStatus("syncing");
+    setAgentMessage("Sending high-level session summaries to AiOS.");
+
+    try {
+      const result = await syncActivitySessions(sessions);
+
+      if (result.locked) {
+        setAgentStatus("locked");
+        setAgentMessage("AiOS is locked. Unlock the AiOS dashboard, then sync again.");
+        return;
+      }
+
+      setAgentStatus("connected");
+      setAgentLastSync(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      setAgentMessage(
+        result.sent > 0
+          ? `Synced ${result.sent} new session${result.sent === 1 ? "" : "s"} to AiOS.`
+          : "AiOS already has the current local session summaries.",
+      );
+    } catch (error) {
+      setAgentStatus("connected");
+      setAgentMessage(error instanceof Error ? error.message : "Unable to sync sessions to AiOS.");
     }
   }
 
@@ -501,16 +546,26 @@ function App() {
                 <p className="eyebrow">Companion layer</p>
                 <h2>Project AI Agent</h2>
               </div>
-              <button
-                className="text-button primary"
-                onClick={checkProjectAiAgent}
-              >
-                {agentStatus === "checking" ? "Checking" : "Connect"}
-              </button>
+              <div className="panel-actions">
+                <button
+                  className="text-button"
+                  disabled={agentStatus === "checking" || agentStatus === "syncing"}
+                  onClick={checkProjectAiAgent}
+                >
+                  {agentStatus === "checking" ? "Checking" : "Connect"}
+                </button>
+                <button
+                  className="text-button primary"
+                  disabled={agentStatus === "checking" || agentStatus === "syncing" || !hasData}
+                  onClick={syncCurrentSessions}
+                >
+                  {agentStatus === "syncing" ? "Syncing" : "Sync"}
+                </button>
+              </div>
             </div>
             <p className="panel-copy">
-              Assistant features unlock only after this trusted Project AI Agent is running locally
-              and approved by the user.
+              This app sends only approved activity summaries to the local AiOS Assistant. Raw titles,
+              screenshots, messages, keystrokes, and private files stay out of the bridge.
             </p>
 
             <div className="agent-identity">
@@ -523,7 +578,7 @@ function App() {
             </div>
 
             <div className="agent-links">
-              <a href={projectAiAgent.localUrl} target="_blank" rel="noreferrer">
+              <a href={getAiosBaseUrl()} target="_blank" rel="noreferrer">
                 Local app
               </a>
               <span>{projectAiAgent.cwd}</span>
@@ -535,19 +590,38 @@ function App() {
                 <strong>
                   {agentStatus === "connected"
                     ? "Project AI Agent connected"
+                    : agentStatus === "locked"
+                      ? "Project AI Agent locked"
+                    : agentStatus === "syncing"
+                      ? "Syncing with Project AI Agent"
                     : agentStatus === "checking"
                       ? "Searching local machine"
                       : "Project AI Agent not installed"}
                 </strong>
                 <small>
                   {agentStatus === "connected"
-                    ? "Reminders, memory, email, and jobs are available."
+                    ? "Reminders, memory, email, jobs, and wellbeing context are available."
+                    : agentStatus === "locked"
+                      ? "Unlock AiOS in the browser before API sync can write events."
+                    : agentStatus === "syncing"
+                      ? "Sending new local session summaries."
                     : agentStatus === "checking"
                       ? "Looking for a trusted local companion app."
                       : "Install Project AI Agent to unlock assistant features."}
                 </small>
               </div>
             </div>
+
+            <div className="agent-sync-grid">
+              <SettingRow label="AiOS API" value={getAiosBaseUrl()} />
+              <SettingRow
+                label="Wellbeing minutes"
+                value={`${agentLive?.stats?.wellbeing_minutes ?? 0}`}
+              />
+              <SettingRow label="Last sync" value={agentLastSync || "Not synced"} />
+            </div>
+
+            <div className="inline-status agent-message">{agentMessage}</div>
 
             <div className="agent-feature-list">
               {agentFeatures.map((feature) => {

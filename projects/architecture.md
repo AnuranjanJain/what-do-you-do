@@ -177,7 +177,7 @@ flowchart TD
 | Sub-activity Classifier | Detects deeper labels like debugging, learning, note-making, AFK, strategy gaming, or distracted scrolling. |
 | Timeline Store | Stores local time blocks, labels, confidence scores, corrections, and daily summaries. |
 | Privacy Control Center | Lets the user pause tracking, inspect collected data, delete data, export data, and disable specific signal sources. |
-| Integration Bridge | Connects to `Project AI Agent` only after install detection and explicit user approval. |
+| Integration Bridge | Connects to `Project AI Agent` only after install detection and explicit user approval, then syncs high-level sessions to the local AiOS API. |
 | Dashboard | Shows daily timeline, focus patterns, distractions, active/idle split, app categories, and wellbeing insights. |
 | Widgets | Shows current activity, reminders, focus status, daily summary, and quick capture shortcuts. |
 
@@ -200,6 +200,33 @@ Current trusted Project AI Agent reference:
 | Email Reader | Reads selected email sources only after opt-in and extracts tasks, deadlines, interviews, and follow-ups. |
 | Job Tracker | Tracks applications, statuses, contacts, deadlines, interviews, rejections, offers, and follow-ups. |
 | Action Planner | Suggests next actions based on context, reminders, jobs, email, and recent activity. |
+
+## Implemented local bridge
+
+The current bridge is implemented in `src/services/aios.ts` and surfaced in the dashboard `Project AI Agent` panel.
+
+Runtime flow:
+
+1. The dashboard checks `GET http://127.0.0.1:5000/api/live`.
+2. If AiOS is locked by the local PIN, the panel reports `locked` and does not pretend sync succeeded.
+3. If AiOS is connected, the user can sync new activity sessions.
+4. The bridge posts each unsent session to `POST http://127.0.0.1:5000/api/wellbeing/activity`.
+5. Sent session IDs are remembered in browser local storage to avoid repeated notifications from refreshes.
+
+Privacy-safe payload:
+
+```json
+{
+  "source": "what-do-you-do",
+  "app_name": "VS Code",
+  "category": "deep_work",
+  "duration_minutes": 42,
+  "planned_task": "Private activity timeline",
+  "actual_task": "Building or editing code (09:10-09:52)"
+}
+```
+
+The bridge intentionally excludes raw window titles, screenshots, keystrokes, URLs, private messages, files, and full private notes.
 
 ## Integration contract
 

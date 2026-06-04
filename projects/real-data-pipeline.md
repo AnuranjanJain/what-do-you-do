@@ -14,6 +14,8 @@ flowchart LR
     F --> G["Local store"]
     G --> H["Local API"]
     H --> I["Dashboard"]
+    I --> J["AiOS bridge"]
+    J --> K["Local assistant context"]
 ```
 
 ## Stage 1: OS signals
@@ -135,6 +137,17 @@ The local collector exposes:
 
 The dashboard polls `/sessions?date=YYYY-MM-DD`. If the selected date is the active date, the response includes the live current session. If the selected date is older, the response comes from persisted daily history. If the collector is not running, the dashboard falls back to simulator data.
 
+## Stage 8: AiOS local bridge
+
+The dashboard can forward approved session summaries to AiOS Assistant on the same device:
+
+- health/live check: `GET http://127.0.0.1:5000/api/live`
+- activity sync: `POST http://127.0.0.1:5000/api/wellbeing/activity`
+- duplicate guard: browser local storage tracks session IDs already sent to AiOS
+- lock handling: a `401` response means AiOS is running but the local PIN is locked
+
+The bridge is not a cloud sync layer. It is a local app-to-app workflow for assistant context, reminders, and later memory/job/email suggestions.
+
 ## Real-data milestone
 
 Current real data:
@@ -145,6 +158,7 @@ Current real data:
 - Persisted session history
 - Daily session files
 - Date-aware dashboard view
+- Manual local sync into AiOS Assistant wellbeing events
 
 Next real data:
 
@@ -152,3 +166,4 @@ Next real data:
 - Discord high-level state without message reading
 - SQLite persistence
 - User correction feedback loop
+- Optional background AiOS sync from the collector when a local API token exists
