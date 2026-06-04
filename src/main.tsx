@@ -19,6 +19,7 @@ import {
   MonitorSmartphone,
   Pause,
   PieChart,
+  StickyNote,
   Search,
   Settings2,
   ShieldCheck,
@@ -38,8 +39,7 @@ import {
   simulateTodayActivity,
   todayDateKey,
 } from "./domain/activity";
-import { fetchLiveSessions } from "./services/collector";
-import { correctLiveSession } from "./services/collector";
+import { correctLiveSession, fetchLiveSessions, saveSessionNote } from "./services/collector";
 import "./styles.css";
 
 const categoryMeta: Record<
@@ -89,6 +89,8 @@ function App() {
   const [trackingPaused, setTrackingPaused] = useState(false);
   const [correctionMode, setCorrectionMode] = useState(false);
   const [correctionMessage, setCorrectionMessage] = useState("");
+  const [noteMode, setNoteMode] = useState(false);
+  const [noteMessage, setNoteMessage] = useState("");
   const [sessions, setSessions] = useState<ActivitySession[]>(() => simulateTodayActivity());
 
   useEffect(() => {
@@ -158,6 +160,20 @@ function App() {
       setCorrectionMessage("Label saved locally.");
     } catch (error) {
       setCorrectionMessage(error instanceof Error ? error.message : "Unable to save correction.");
+    }
+  }
+
+  async function handleNote(sessionId: string, note: string) {
+    try {
+      await saveSessionNote({
+        date: selectedDate,
+        note,
+        sessionId,
+      });
+      await refreshSelectedDate();
+      setNoteMessage(note.trim() ? "Note saved locally." : "Note cleared locally.");
+    } catch (error) {
+      setNoteMessage(error instanceof Error ? error.message : "Unable to save note.");
     }
   }
 
@@ -376,8 +392,13 @@ function App() {
               <button className="text-button" onClick={() => setCorrectionMode((value) => !value)}>
                 {correctionMode ? "Done" : "Correct labels"}
               </button>
+              <button className="text-button" onClick={() => setNoteMode((value) => !value)}>
+                <StickyNote size={16} />
+                {noteMode ? "Done" : "Notes"}
+              </button>
             </div>
             {correctionMessage && <div className="inline-status">{correctionMessage}</div>}
+            {noteMessage && <div className="inline-status note-status">{noteMessage}</div>}
 
             {hasData ? (
               <div className="timeline">
@@ -387,6 +408,8 @@ function App() {
                     item={item}
                     key={item.id}
                     onCorrect={handleCorrection}
+                    noteMode={noteMode}
+                    onSaveNote={handleNote}
                   />
                 ))}
               </div>
@@ -846,27 +869,40 @@ function PermissionRow({ permission }: { permission: PrivacyPermission }) {
 function TimelineRow({
   correctionMode,
   item,
+  noteMode,
   onCorrect,
+  onSaveNote,
 }: {
   correctionMode: boolean;
   item: ActivitySession;
+  noteMode: boolean;
   onCorrect: (sessionId: string, category: ActivityCategory, subcategory: string) => Promise<void>;
+  onSaveNote: (sessionId: string, note: string) => Promise<void>;
 }) {
   const meta = categoryMeta[item.category];
   const Icon = meta.icon;
   const [category, setCategory] = useState<ActivityCategory>(item.category);
   const [subcategory, setSubcategory] = useState(item.subcategory);
+  const [note, setNote] = useState(item.note ?? "");
   const [saving, setSaving] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
     setCategory(item.category);
     setSubcategory(item.subcategory);
-  }, [item.category, item.subcategory]);
+    setNote(item.note ?? "");
+  }, [item.category, item.note, item.subcategory]);
 
   async function saveCorrection() {
     setSaving(true);
     await onCorrect(item.id, category, subcategory);
     setSaving(false);
+  }
+
+  async function saveNote() {
+    setSavingNote(true);
+    await onSaveNote(item.id, note);
+    setSavingNote(false);
   }
 
   return (
@@ -910,6 +946,29 @@ function TimelineRow({
           </button>
         </div>
       )}
+      {item.note && !noteMode && (
+        <div className="session-note-card">
+          <StickyNote size={15} />
+          <span>{item.note}</span>
+        </div>
+      )}
+      {noteMode && (
+        <div className="note-form">
+          <textarea
+            aria-label={`Private note for ${item.appName}`}
+            maxLength={280}
+            placeholder="Add a private note for this session"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <div>
+            <span>{note.trim().length}/280</span>
+            <button disabled={savingNote || note === (item.note ?? "")} onClick={saveNote}>
+              {savingNote ? "Saving" : note.trim() ? "Save note" : "Clear note"}
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
@@ -924,6 +983,12 @@ function LogRow({ item }: { item: ActivitySession }) {
       <span>{meta.label}</span>
       <small>{item.subcategory}</small>
       <em>{formatMinutes(item.durationMinutes)}</em>
+      {item.note && (
+        <div className="log-note">
+          <StickyNote size={14} />
+          <span>{item.note}</span>
+        </div>
+      )}
     </article>
   );
 }

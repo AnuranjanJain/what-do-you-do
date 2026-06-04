@@ -106,7 +106,32 @@ async function correctSession(dateKey, sessionId, patch) {
   return { ok: true, session: result.session };
 }
 
-function updateSessionCollection(stored, sessionId, patch) {
+async function noteSession(dateKey, sessionId, patch) {
+  const stored = dateKey === activeDateKey
+    ? { currentSession, sessions }
+    : await readSessionsForDate(dateKey);
+
+  const result = updateSessionCollection(stored, sessionId, patch, {
+    markCorrection: false,
+    markNote: true,
+  });
+
+  if (!result.updated) {
+    return { ok: false, error: "Session not found" };
+  }
+
+  if (dateKey === activeDateKey) {
+    currentSession = result.currentSession;
+    sessions = result.sessions;
+    await persistActiveDate();
+  } else {
+    await persistDate(dateKey, result.currentSession, result.sessions);
+  }
+
+  return { ok: true, session: result.session };
+}
+
+function updateSessionCollection(stored, sessionId, patch, options = { markCorrection: true, markNote: false }) {
   let updated = false;
   let correctedSession = null;
 
@@ -117,11 +142,19 @@ function updateSessionCollection(stored, sessionId, patch) {
     correctedSession = {
       ...session,
       ...patch,
-      confidence: 100,
-      correctedAt: new Date().toISOString(),
-      correctionSource: "user",
-      signalSources: Array.from(new Set([...(session.signalSources ?? []), "user-correction"])),
     };
+
+    if (options.markCorrection) {
+      correctedSession.confidence = 100;
+      correctedSession.correctedAt = new Date().toISOString();
+      correctedSession.correctionSource = "user";
+      correctedSession.signalSources = Array.from(new Set([...(session.signalSources ?? []), "user-correction"]));
+    }
+
+    if (options.markNote) {
+      correctedSession.notedAt = new Date().toISOString();
+    }
+
     correctedSession.fingerprint = `${correctedSession.appName}:${correctedSession.category}:${correctedSession.subcategory}`;
     return correctedSession;
   }
@@ -400,6 +433,33 @@ function sanitizeCorrectionPayload(payload) {
   };
 }
 
+function sanitizeNotePayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, error: "Missing JSON payload" };
+  }
+
+  const date = String(payload.date ?? "");
+  const sessionId = String(payload.sessionId ?? "");
+  const note = String(payload.note ?? "").trim().slice(0, 280);
+
+  if (!isValidDateKey(date)) {
+    return { ok: false, error: "Invalid date. Use YYYY-MM-DD." };
+  }
+
+  if (!sessionId) {
+    return { ok: false, error: "Missing sessionId" };
+  }
+
+  return {
+    ok: true,
+    date,
+    sessionId,
+    patch: {
+      note,
+    },
+  };
+}
+
 async function readJsonBody(request) {
   const chunks = [];
 
@@ -516,6 +576,26 @@ const server = createServer(async (request, response) => {
       jsonResponse(response, 400, {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to apply correction",
+      });
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/sessions/note" && request.method === "POST") {
+    try {
+      const payload = sanitizeNotePayload(await readJsonBody(request));
+
+      if (!payload.ok) {
+        jsonResponse(response, 400, payload);
+        return;
+      }
+
+      const result = await noteSession(payload.date, payload.sessionId, payload.patch);
+      jsonResponse(response, result.ok ? 200 : 404, result);
+    } catch (error) {
+      jsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to save note",
       });
     }
     return;

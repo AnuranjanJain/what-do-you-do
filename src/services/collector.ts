@@ -52,6 +52,8 @@ export async function fetchLiveSessions(date: string): Promise<CollectorSessions
       confidence: session.confidence,
       correctedAt: session.correctedAt,
       correctionSource: session.correctionSource,
+      note: session.note,
+      notedAt: session.notedAt,
       signalSources: session.signalSources,
       rawContentStored: false,
     })),
@@ -81,5 +83,29 @@ export async function correctLiveSession({
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: `Collector responded with ${response.status}` }));
     throw new Error(error.error ?? "Unable to correct session");
+  }
+}
+
+export async function saveSessionNote({
+  date,
+  note,
+  sessionId,
+}: {
+  date: string;
+  note: string;
+  sessionId: string;
+}): Promise<void> {
+  const response = await fetch(`${collectorBaseUrl}/sessions/note`, {
+    body: JSON.stringify({ date, note, sessionId }),
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: `Collector responded with ${response.status}` }));
+    throw new Error(error.error ?? "Unable to save note");
   }
 }

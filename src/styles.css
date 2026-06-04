@@ -450,6 +450,12 @@ h2 {
   font-weight: 800;
 }
 
+.note-status {
+  border-color: rgba(168, 85, 247, 0.28);
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.1);
+}
+
 .icon-button,
 .text-button {
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -464,6 +470,10 @@ h2 {
 }
 
 .text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 36px;
   padding: 0 14px;
   border-radius: 12px;
@@ -881,6 +891,84 @@ h2 {
   opacity: 0.5;
 }
 
+.session-note-card,
+.note-form {
+  grid-column: 1 / -1;
+}
+
+.session-note-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(168, 85, 247, 0.1);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.session-note-card svg {
+  flex: 0 0 auto;
+  color: #d8b4fe;
+  margin-top: 2px;
+}
+
+.session-note-card span {
+  overflow-wrap: anywhere;
+}
+
+.note-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.note-form textarea {
+  min-height: 76px;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  color: #ffffff;
+  background: rgba(5, 2, 18, 0.34);
+  padding: 11px 12px;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.note-form textarea::placeholder {
+  color: rgba(255, 255, 255, 0.44);
+}
+
+.note-form div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.note-form span {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.note-form button {
+  min-height: 34px;
+  border: 1px solid rgba(168, 85, 247, 0.32);
+  border-radius: 12px;
+  color: #ffffff;
+  background: rgba(168, 85, 247, 0.22);
+  padding: 0 14px;
+  font-weight: 900;
+}
+
+.note-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .log-list {
   display: grid;
   gap: 8px;
@@ -918,6 +1006,25 @@ h2 {
   font-style: normal;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.log-note {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 2px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+}
+
+.log-note svg {
+  flex: 0 0 auto;
+  color: #d8b4fe;
+}
+
+.log-note span {
+  overflow-wrap: anywhere;
 }
 
 .compact-empty-state {

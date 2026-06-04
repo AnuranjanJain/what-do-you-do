@@ -28,6 +28,8 @@ export type ActivitySession = {
   rawContentStored: false;
   correctedAt?: string;
   correctionSource?: "user";
+  note?: string;
+  notedAt?: string;
 };
 
 export type CollectorStatus = "live" | "history" | "simulator";
