@@ -183,6 +183,15 @@ flowchart TD
 
 ### Project AI Agent
 
+Current trusted Project AI Agent reference:
+
+| Field | Value |
+| --- | --- |
+| Codex thread | `codex://threads/019e4a40-fd50-7f92-b46e-1a1548dfdd94` |
+| Thread title | `Build AI agent like ChatGPT` |
+| Local workspace | `C:\Users\anura\Documents\Ai Agent` |
+| Expected local app | `http://127.0.0.1:5000/` |
+
 | Module | Responsibility |
 | --- | --- |
 | Local Agent Runtime | Runs assistant logic locally and receives approved context from `What Do You Do`. |

@@ -201,6 +201,9 @@ The app can become a private personal operating layer, not only a tracker.
 These assistant-layer features should depend on integration with the user's other app:
 
 - Required companion app: Project AI Agent
+- Current trusted Project AI Agent thread: `codex://threads/019e4a40-fd50-7f92-b46e-1a1548dfdd94`
+- Current Project AI Agent workspace: `C:\Users\anura\Documents\Ai Agent`
+- Expected local Project AI Agent app URL: `http://127.0.0.1:5000/`
 - `What Do You Do` handles activity awareness, digital wellbeing, time context, and privacy-first tracking.
 - `Project AI Agent` handles deeper assistant actions, automation, reminders, memory, email intelligence, and job-tracking workflows.
 - The assistant-layer features should only become available after `Project AI Agent` is successfully installed and connected.

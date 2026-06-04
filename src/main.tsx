@@ -69,6 +69,14 @@ const agentFeatures = [
   { name: "Job tracking", unlockedStatus: "Ready through AI Agent", icon: BriefcaseBusiness },
 ];
 
+const projectAiAgent = {
+  cwd: "C:\\Users\\anura\\Documents\\Ai Agent",
+  localUrl: "http://127.0.0.1:5000/",
+  threadId: "019e4a40-fd50-7f92-b46e-1a1548dfdd94",
+  threadTitle: "Build AI agent like ChatGPT",
+  threadUrl: "codex://threads/019e4a40-fd50-7f92-b46e-1a1548dfdd94",
+};
+
 const categoryOptions: ActivityCategory[] = [
   "coding",
   "browsing",
@@ -174,6 +182,20 @@ function App() {
       setNoteMessage(note.trim() ? "Note saved locally." : "Note cleared locally.");
     } catch (error) {
       setNoteMessage(error instanceof Error ? error.message : "Unable to save note.");
+    }
+  }
+
+  async function checkProjectAiAgent() {
+    setAgentStatus("checking");
+
+    try {
+      await fetch(projectAiAgent.localUrl, {
+        cache: "no-store",
+        mode: "no-cors",
+      });
+      setAgentStatus("connected");
+    } catch {
+      setAgentStatus("not-installed");
     }
   }
 
@@ -481,17 +503,31 @@ function App() {
               </div>
               <button
                 className="text-button primary"
-                onClick={() => {
-                  setAgentStatus("checking");
-                  window.setTimeout(() => setAgentStatus("not-installed"), 650);
-                }}
+                onClick={checkProjectAiAgent}
               >
                 {agentStatus === "checking" ? "Checking" : "Connect"}
               </button>
             </div>
             <p className="panel-copy">
-              Assistant features unlock only after the local AI Agent app is installed and approved.
+              Assistant features unlock only after this trusted Project AI Agent is running locally
+              and approved by the user.
             </p>
+
+            <div className="agent-identity">
+              <div>
+                <span>Trusted thread</span>
+                <strong>{projectAiAgent.threadId}</strong>
+                <small>{projectAiAgent.threadTitle}</small>
+              </div>
+              <a href={projectAiAgent.threadUrl}>Open thread</a>
+            </div>
+
+            <div className="agent-links">
+              <a href={projectAiAgent.localUrl} target="_blank" rel="noreferrer">
+                Local app
+              </a>
+              <span>{projectAiAgent.cwd}</span>
+            </div>
 
             <div className={`agent-status ${agentStatus}`}>
               <span />
