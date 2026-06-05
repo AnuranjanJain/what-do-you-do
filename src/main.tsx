@@ -39,7 +39,16 @@ import {
   simulateTodayActivity,
   todayDateKey,
 } from "./domain/activity";
-import { AiosLiveStatus, AiosStatus, checkAiosConnection, getAiosBaseUrl, syncActivitySessions } from "./services/aios";
+import {
+  AiosLiveStatus,
+  AiosStatus,
+  checkAiosConnection,
+  clearAiosSyncHistory,
+  countPendingAiosSessions,
+  getAiosBaseUrl,
+  setAiosBaseUrl,
+  syncActivitySessions,
+} from "./services/aios";
 import { correctLiveSession, fetchLiveSessions, saveSessionNote } from "./services/collector";
 import "./styles.css";
 
@@ -96,6 +105,11 @@ function App() {
   const [agentLive, setAgentLive] = useState<AiosLiveStatus | null>(null);
   const [agentMessage, setAgentMessage] = useState("AiOS has not been checked in this session.");
   const [agentLastSync, setAgentLastSync] = useState("");
+  const [agentAutoSync, setAgentAutoSync] = useState(
+    () => window.localStorage.getItem("wdyd.aios.autoSync") === "true",
+  );
+  const [agentBaseUrl, setAgentBaseUrlState] = useState(() => getAiosBaseUrl());
+  const [agentPendingCount, setAgentPendingCount] = useState(0);
   const [widgetMode, setWidgetMode] = useState<"desktop" | "mobile">("desktop");
   const [privacyExpanded, setPrivacyExpanded] = useState(false);
   const [trackingPaused, setTrackingPaused] = useState(false);
@@ -152,6 +166,28 @@ function App() {
   const visibleTimeline = sessions.slice(0, 15);
   const logEntries = sessions.slice(15);
 
+  useEffect(() => {
+    setAgentPendingCount(countPendingAiosSessions(sessions));
+  }, [sessions, agentLastSync]);
+
+  useEffect(() => {
+    window.localStorage.setItem("wdyd.aios.autoSync", String(agentAutoSync));
+  }, [agentAutoSync]);
+
+  useEffect(() => {
+    if (!agentAutoSync || !hasData || trackingPaused || selectedDate !== activeDateKey) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (countPendingAiosSessions(sessions) > 0) {
+        syncCurrentSessions("auto");
+      }
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeDateKey, agentAutoSync, hasData, selectedDate, sessions, trackingPaused]);
+
   async function refreshSelectedDate() {
     const result = await fetchLiveSessions(selectedDate);
     setSessions(result.sessions);
@@ -205,7 +241,7 @@ function App() {
 
       setAgentStatus("connected");
       setAgentMessage("AiOS is connected. You can sync privacy-safe activity sessions.");
-      await syncCurrentSessions();
+      await syncCurrentSessions("manual");
     } catch (error) {
       setAgentLive(null);
       setAgentStatus("not-installed");
@@ -213,14 +249,18 @@ function App() {
     }
   }
 
-  async function syncCurrentSessions() {
+  async function syncCurrentSessions(mode: "manual" | "auto" = "manual") {
     if (!hasData) {
       setAgentMessage("No activity sessions available to sync for this date.");
       return;
     }
 
     setAgentStatus("syncing");
-    setAgentMessage("Sending high-level session summaries to AiOS.");
+    setAgentMessage(
+      mode === "auto"
+        ? "Auto-sync is sending new high-level session summaries to AiOS."
+        : "Sending high-level session summaries to AiOS.",
+    );
 
     try {
       const result = await syncActivitySessions(sessions);
@@ -233,15 +273,30 @@ function App() {
 
       setAgentStatus("connected");
       setAgentLastSync(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      setAgentPendingCount(countPendingAiosSessions(sessions));
       setAgentMessage(
         result.sent > 0
-          ? `Synced ${result.sent} new session${result.sent === 1 ? "" : "s"} to AiOS.`
+          ? `${mode === "auto" ? "Auto-synced" : "Synced"} ${result.sent} new session${result.sent === 1 ? "" : "s"} to AiOS.`
           : "AiOS already has the current local session summaries.",
       );
     } catch (error) {
       setAgentStatus("connected");
       setAgentMessage(error instanceof Error ? error.message : "Unable to sync sessions to AiOS.");
     }
+  }
+
+  function handleAgentBaseUrlChange(value: string) {
+    const normalized = setAiosBaseUrl(value);
+    setAgentBaseUrlState(normalized);
+    setAgentLive(null);
+    setAgentStatus("not-installed");
+    setAgentMessage(`AiOS API set to ${normalized}. Press Connect to verify it.`);
+  }
+
+  function resetAiosSyncHistory() {
+    clearAiosSyncHistory();
+    setAgentPendingCount(countPendingAiosSessions(sessions));
+    setAgentMessage("AiOS sync history cleared. Current sessions can be sent again.");
   }
 
   return (
@@ -557,7 +612,7 @@ function App() {
                 <button
                   className="text-button primary"
                   disabled={agentStatus === "checking" || agentStatus === "syncing" || !hasData}
-                  onClick={syncCurrentSessions}
+                  onClick={() => syncCurrentSessions("manual")}
                 >
                   {agentStatus === "syncing" ? "Syncing" : "Sync"}
                 </button>
@@ -578,10 +633,32 @@ function App() {
             </div>
 
             <div className="agent-links">
-              <a href={getAiosBaseUrl()} target="_blank" rel="noreferrer">
+              <a href={agentBaseUrl} target="_blank" rel="noreferrer">
                 Local app
               </a>
               <span>{projectAiAgent.cwd}</span>
+            </div>
+
+            <div className="agent-bridge-controls">
+              <label>
+                <span>AiOS API</span>
+                <input
+                  value={agentBaseUrl}
+                  onBlur={(event) => handleAgentBaseUrlChange(event.target.value)}
+                  onChange={(event) => setAgentBaseUrlState(event.target.value)}
+                />
+              </label>
+              <label className="toggle-row">
+                <input
+                  checked={agentAutoSync}
+                  type="checkbox"
+                  onChange={(event) => setAgentAutoSync(event.target.checked)}
+                />
+                <span>Auto-sync approved summaries</span>
+              </label>
+              <button className="text-button" onClick={resetAiosSyncHistory}>
+                Reset sent list
+              </button>
             </div>
 
             <div className={`agent-status ${agentStatus}`}>
@@ -613,12 +690,14 @@ function App() {
             </div>
 
             <div className="agent-sync-grid">
-              <SettingRow label="AiOS API" value={getAiosBaseUrl()} />
+              <SettingRow label="AiOS API" value={agentBaseUrl} />
               <SettingRow
                 label="Wellbeing minutes"
                 value={`${agentLive?.stats?.wellbeing_minutes ?? 0}`}
               />
               <SettingRow label="Last sync" value={agentLastSync || "Not synced"} />
+              <SettingRow label="Pending sync" value={`${agentPendingCount}`} />
+              <SettingRow label="Auto-sync" value={agentAutoSync ? "Enabled" : "Manual"} />
             </div>
 
             <div className="inline-status agent-message">{agentMessage}</div>
@@ -724,6 +803,8 @@ function App() {
               <SettingRow label="Selected date" value={selectedDate} />
               <SettingRow label="Active date" value={activeDateKey} />
               <SettingRow label="Collector API" value="127.0.0.1:17321" />
+              <SettingRow label="AiOS API" value={agentBaseUrl} />
+              <SettingRow label="AiOS auto-sync" value={agentAutoSync ? "Enabled" : "Manual"} />
               <SettingRow label="Refresh interval" value="3 seconds" />
               <SettingRow label="Storage" value="Daily JSON files" />
             </div>

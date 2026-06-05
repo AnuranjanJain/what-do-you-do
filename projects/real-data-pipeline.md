@@ -145,6 +145,15 @@ The dashboard can forward approved session summaries to AiOS Assistant on the sa
 - activity sync: `POST http://127.0.0.1:5000/api/wellbeing/activity`
 - duplicate guard: browser local storage tracks session IDs already sent to AiOS
 - lock handling: a `401` response means AiOS is running but the local PIN is locked
+- auto-sync: optional browser-side sync every 15 seconds while the dashboard is open
+- endpoint config: AiOS base URL is editable and saved locally in the browser
+
+The collector can also sync closed sessions without the browser dashboard:
+
+- enable with `WDYD_AIOS_SYNC=1`
+- set `WDYD_AIOS_URL=http://127.0.0.1:5000`
+- set `WDYD_AIOS_API_TOKEN` to the token configured in AiOS settings
+- duplicate guard: `data/aios-sync-state.json`
 
 The bridge is not a cloud sync layer. It is a local app-to-app workflow for assistant context, reminders, and later memory/job/email suggestions.
 
@@ -158,7 +167,8 @@ Current real data:
 - Persisted session history
 - Daily session files
 - Date-aware dashboard view
-- Manual local sync into AiOS Assistant wellbeing events
+- Manual and opt-in auto-sync into AiOS Assistant wellbeing events
+- Optional token-authenticated collector sync into AiOS Assistant
 
 Next real data:
 
@@ -166,4 +176,4 @@ Next real data:
 - Discord high-level state without message reading
 - SQLite persistence
 - User correction feedback loop
-- Optional background AiOS sync from the collector when a local API token exists
+- In-app control for collector-level AiOS sync

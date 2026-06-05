@@ -2,6 +2,7 @@ import { ActivitySession } from "../domain/activity";
 
 const defaultAiosBaseUrl = "http://127.0.0.1:5000";
 const sentSessionStorageKey = "wdyd.aios.sentSessions.v1";
+const aiosBaseUrlStorageKey = "wdyd.aios.baseUrl";
 
 export type AiosStatus = "not-installed" | "checking" | "connected" | "locked" | "syncing";
 
@@ -17,13 +18,29 @@ export type AiosLiveStatus = {
 };
 
 export type AiosSyncResult = {
+  pendingBeforeSync: number;
   sent: number;
   skipped: number;
   locked: boolean;
 };
 
 export function getAiosBaseUrl(): string {
-  return window.localStorage.getItem("wdyd.aios.baseUrl") || defaultAiosBaseUrl;
+  return window.localStorage.getItem(aiosBaseUrlStorageKey) || defaultAiosBaseUrl;
+}
+
+export function setAiosBaseUrl(baseUrl: string): string {
+  const normalized = normalizeBaseUrl(baseUrl);
+  window.localStorage.setItem(aiosBaseUrlStorageKey, normalized);
+  return normalized;
+}
+
+export function countPendingAiosSessions(sessions: ActivitySession[]): number {
+  const sentSessionIds = readSentSessionIds();
+  return getSyncableSessions(sessions, sentSessionIds, Number.POSITIVE_INFINITY).length;
+}
+
+export function clearAiosSyncHistory(): void {
+  window.localStorage.removeItem(sentSessionStorageKey);
 }
 
 export async function checkAiosConnection(): Promise<AiosLiveStatus> {
@@ -52,10 +69,8 @@ export async function checkAiosConnection(): Promise<AiosLiveStatus> {
 
 export async function syncActivitySessions(sessions: ActivitySession[]): Promise<AiosSyncResult> {
   const sentSessionIds = readSentSessionIds();
-  const syncableSessions = sessions
-    .filter((session) => session.id !== "empty-session" && session.durationMinutes > 0)
-    .filter((session) => !sentSessionIds.has(session.id))
-    .slice(0, 5);
+  const pendingBeforeSync = getSyncableSessions(sessions, sentSessionIds, Number.POSITIVE_INFINITY).length;
+  const syncableSessions = getSyncableSessions(sessions, sentSessionIds, 5);
 
   let sent = 0;
 
@@ -71,7 +86,12 @@ export async function syncActivitySessions(sessions: ActivitySession[]): Promise
     });
 
     if (response.status === 401) {
-      return { sent, skipped: sessions.length - syncableSessions.length, locked: true };
+      return {
+        pendingBeforeSync,
+        sent,
+        skipped: pendingBeforeSync - sent,
+        locked: true,
+      };
     }
 
     if (!response.ok) {
@@ -85,10 +105,22 @@ export async function syncActivitySessions(sessions: ActivitySession[]): Promise
   writeSentSessionIds(sentSessionIds);
 
   return {
+    pendingBeforeSync,
     sent,
-    skipped: sessions.length - syncableSessions.length,
+    skipped: pendingBeforeSync - sent,
     locked: false,
   };
+}
+
+function getSyncableSessions(
+  sessions: ActivitySession[],
+  sentSessionIds: Set<string>,
+  limit: number,
+): ActivitySession[] {
+  return sessions
+    .filter((session) => session.id !== "empty-session" && session.durationMinutes > 0)
+    .filter((session) => !sentSessionIds.has(session.id))
+    .slice(0, limit);
 }
 
 function toAiosPayload(session: ActivitySession) {
@@ -121,4 +153,18 @@ function readSentSessionIds(): Set<string> {
 function writeSentSessionIds(sessionIds: Set<string>) {
   const compactIds = Array.from(sessionIds).slice(-500);
   window.localStorage.setItem(sentSessionStorageKey, JSON.stringify(compactIds));
+}
+
+function normalizeBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.trim().replace(/\/+$/, "");
+
+  if (!trimmed) {
+    return defaultAiosBaseUrl;
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `http://${trimmed}`;
+  }
+
+  return trimmed;
 }

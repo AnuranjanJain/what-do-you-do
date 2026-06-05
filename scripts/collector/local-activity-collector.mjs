@@ -10,10 +10,14 @@ const snapshotScript = join(__dirname, "get-windows-activity.ps1");
 const dataDir = join(projectRoot, "data");
 const sessionsDir = join(dataDir, "activity-sessions");
 const legacySessionStorePath = join(dataDir, "activity-sessions.json");
+const aiosSyncStatePath = join(dataDir, "aios-sync-state.json");
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.WDYD_COLLECTOR_PORT ?? "17321", 10);
 const pollMs = Number.parseInt(process.env.WDYD_COLLECTOR_POLL_MS ?? "2500", 10);
 const idleThresholdMs = Number.parseInt(process.env.WDYD_IDLE_THRESHOLD_MS ?? "60000", 10);
+const aiosSyncEnabled = process.env.WDYD_AIOS_SYNC === "1";
+const aiosBaseUrl = process.env.WDYD_AIOS_URL ?? "http://127.0.0.1:5000";
+const aiosApiToken = process.env.WDYD_AIOS_API_TOKEN ?? "";
 const maxSessions = 96;
 const activityCategories = new Set(["coding", "browsing", "communication", "gaming", "watching", "idle"]);
 
@@ -22,12 +26,21 @@ let currentSession = null;
 let sessions = [];
 let activeDateKey = formatDateKey(new Date());
 let lastError = null;
+let aiosSyncState = {
+  enabled: aiosSyncEnabled,
+  lastError: null,
+  lastSyncedAt: null,
+  lastSyncedSessionId: null,
+  sentSessionIds: [],
+  totalSynced: 0,
+};
 let persistenceReady = false;
 
 async function bootstrapStorage() {
   await mkdir(sessionsDir, { recursive: true });
   await migrateLegacyStore();
   await loadActiveDate(activeDateKey);
+  await loadAiosSyncState();
   persistenceReady = true;
 }
 
@@ -173,6 +186,7 @@ function updateSessionCollection(stored, sessionId, patch, options = { markCorre
 async function persistActiveDate() {
   if (!persistenceReady) return;
   await persistDate(activeDateKey, currentSession, sessions);
+  await syncClosedSessionsToAios();
 }
 
 async function persistDate(dateKey, currentSessionForDate, sessionsForDate) {
@@ -198,6 +212,96 @@ function buildPayload(dateKey, currentSessionForDate, sessionsForDate) {
       storesRawWindowTitles: false,
     },
   };
+}
+
+async function loadAiosSyncState() {
+  try {
+    const stored = JSON.parse(await readFile(aiosSyncStatePath, "utf-8"));
+    aiosSyncState = {
+      ...aiosSyncState,
+      ...stored,
+      enabled: aiosSyncEnabled,
+      sentSessionIds: Array.isArray(stored.sentSessionIds) ? stored.sentSessionIds.map(String).slice(-500) : [],
+    };
+  } catch {
+    await persistAiosSyncState();
+  }
+}
+
+async function persistAiosSyncState() {
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(
+    aiosSyncStatePath,
+    `${JSON.stringify({ ...aiosSyncState, enabled: aiosSyncEnabled }, null, 2)}\n`,
+    "utf-8",
+  );
+}
+
+async function syncClosedSessionsToAios() {
+  if (!aiosSyncEnabled) return;
+
+  if (!aiosApiToken) {
+    aiosSyncState.lastError = "WDYD_AIOS_API_TOKEN is required when WDYD_AIOS_SYNC=1.";
+    await persistAiosSyncState();
+    return;
+  }
+
+  const sentSessionIds = new Set(aiosSyncState.sentSessionIds);
+  const pendingSessions = sessions
+    .filter((session) => session.id && session.durationMinutes > 0 && !sentSessionIds.has(session.id))
+    .slice(0, 5);
+
+  if (pendingSessions.length === 0) return;
+
+  for (const session of pendingSessions) {
+    try {
+      const response = await fetch(`${aiosBaseUrl}/api/wellbeing/activity`, {
+        body: JSON.stringify(toAiosPayload(session)),
+        headers: {
+          "Content-Type": "application/json",
+          "X-AiOS-Token": aiosApiToken,
+        },
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        aiosSyncState.lastError = `AiOS responded with ${response.status}.`;
+        await persistAiosSyncState();
+        return;
+      }
+
+      sentSessionIds.add(session.id);
+      aiosSyncState.lastError = null;
+      aiosSyncState.lastSyncedAt = new Date().toISOString();
+      aiosSyncState.lastSyncedSessionId = session.id;
+      aiosSyncState.totalSynced += 1;
+    } catch (error) {
+      aiosSyncState.lastError = error instanceof Error ? error.message : "Unable to sync with AiOS.";
+      await persistAiosSyncState();
+      return;
+    }
+  }
+
+  aiosSyncState.sentSessionIds = Array.from(sentSessionIds).slice(-500);
+  await persistAiosSyncState();
+}
+
+function toAiosPayload(session) {
+  return {
+    source: "what-do-you-do-collector",
+    app_name: session.appName,
+    category: mapCategoryForAios(session.category),
+    duration_minutes: session.durationMinutes,
+    planned_task: "Private activity timeline",
+    actual_task: `${session.subcategory} (${session.startTime}-${session.endTime})`,
+  };
+}
+
+function mapCategoryForAios(category) {
+  if (category === "coding" || category === "browsing") return "deep_work";
+  if (category === "watching") return "entertainment";
+  if (category === "communication") return "social";
+  return category;
 }
 
 function runPowerShellSnapshot() {
@@ -512,6 +616,12 @@ const server = createServer(async (request, response) => {
       persistenceReady,
       sessionsDir,
       lastError,
+      aiosSync: {
+        enabled: aiosSyncEnabled,
+        lastError: aiosSyncState.lastError,
+        lastSyncedAt: aiosSyncState.lastSyncedAt,
+        totalSynced: aiosSyncState.totalSynced,
+      },
     });
     return;
   }

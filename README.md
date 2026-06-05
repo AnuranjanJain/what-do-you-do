@@ -41,6 +41,25 @@ Workflow:
 3. Start this app and the collector with `npm run dev` and `npm run collector:dev`.
 4. Open the `Project AI Agent` panel and press `Connect`.
 5. Press `Sync` to send new high-level activity sessions to AiOS.
+6. Optionally enable `Auto-sync approved summaries` after the connection is verified.
+
+Bridge controls:
+
+- `AiOS API`: editable local backend URL, stored in browser local storage.
+- `Pending sync`: count of local sessions not yet sent to AiOS.
+- `Auto-sync approved summaries`: opt-in background sync from the browser while the dashboard is open.
+- `Reset sent list`: clears the local duplicate guard so current sessions can be sent again.
+
+Optional background sync from the collector:
+
+```powershell
+$env:WDYD_AIOS_SYNC='1'
+$env:WDYD_AIOS_URL='http://127.0.0.1:5000'
+$env:WDYD_AIOS_API_TOKEN='paste-the-token-from-aios-settings'
+npm run collector:dev
+```
+
+When enabled, the collector syncs closed sessions in the background and stores duplicate protection in `data/aios-sync-state.json`.
 
 The bridge sends only:
 

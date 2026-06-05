@@ -1282,6 +1282,53 @@ h2 {
   padding: 0 2px;
 }
 
+.agent-bridge-controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 0.8fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.agent-bridge-controls label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.agent-bridge-controls label > span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.agent-bridge-controls input[type="text"],
+.agent-bridge-controls input:not([type]) {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #ffffff;
+  background: rgba(5, 2, 18, 0.32);
+  padding: 0 11px;
+  font: inherit;
+}
+
+.toggle-row {
+  min-height: 38px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(5, 2, 18, 0.22);
+}
+
+.toggle-row input {
+  accent-color: #a855f7;
+}
+
 .agent-status > span {
   width: 12px;
   height: 12px;
@@ -1337,7 +1384,7 @@ h2 {
 
 .agent-sync-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -1490,6 +1537,7 @@ h2 {
 
   .insight-summary-grid,
   .agent-sync-grid,
+  .agent-bridge-controls,
   .top-app-row {
     grid-template-columns: 1fr;
   }

@@ -209,9 +209,18 @@ Runtime flow:
 
 1. The dashboard checks `GET http://127.0.0.1:5000/api/live`.
 2. If AiOS is locked by the local PIN, the panel reports `locked` and does not pretend sync succeeded.
-3. If AiOS is connected, the user can sync new activity sessions.
+3. If AiOS is connected, the user can sync new activity sessions manually.
 4. The bridge posts each unsent session to `POST http://127.0.0.1:5000/api/wellbeing/activity`.
 5. Sent session IDs are remembered in browser local storage to avoid repeated notifications from refreshes.
+6. Optional auto-sync can run while the dashboard is open, but it is off until the user enables it.
+
+Dashboard bridge controls:
+
+- Editable AiOS API base URL.
+- Pending sync count.
+- Last sync time.
+- Auto-sync toggle.
+- Reset sent-list action for local testing or replays.
 
 Privacy-safe payload:
 
