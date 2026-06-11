@@ -52,6 +52,7 @@ import {
   HackathonDraft,
   HackathonFeed,
   HackathonStatus,
+  PlacementFeed,
   emptyHackathonDraft,
 } from "./domain/hackathon";
 import {
@@ -69,10 +70,14 @@ import {
   addHackathonTimelineEntry,
   deleteHackathon,
   fetchAiosHackathons,
+  fetchAiosNeoPat,
+  fetchAiosPlacements,
   fetchHackathons,
   findMatchingLocalHackathon,
   markHackathonUpdateRead,
+  markPlacementUpdateRead,
   refreshAiosHackathons,
+  refreshAiosPlacements,
   saveHackathon,
 } from "./services/hackathons";
 import "./styles.css";
@@ -154,9 +159,14 @@ function App() {
   const [noteMessage, setNoteMessage] = useState("");
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [hackathonFeed, setHackathonFeed] = useState<HackathonFeed | null>(null);
+  const [placementFeed, setPlacementFeed] = useState<PlacementFeed | null>(null);
+  const [neopatFeed, setNeopatFeed] = useState<PlacementFeed | null>(null);
   const [hackathonMessage, setHackathonMessage] = useState("Loading local hackathon tracker.");
   const [hackathonSourceMessage, setHackathonSourceMessage] = useState("Connecting to AiOS sources.");
+  const [placementSourceMessage, setPlacementSourceMessage] = useState("Connecting to placement sources.");
+  const [neopatSourceMessage, setNeopatSourceMessage] = useState("Connecting to NeoPat folder.");
   const [hackathonRefreshing, setHackathonRefreshing] = useState(false);
+  const [placementRefreshing, setPlacementRefreshing] = useState(false);
   const [hackathonFormOpen, setHackathonFormOpen] = useState(false);
   const [editingHackathon, setEditingHackathon] = useState<Hackathon | null>(null);
   const [sessions, setSessions] = useState<ActivitySession[]>(() => simulateTodayActivity());
@@ -204,7 +214,13 @@ function App() {
   useEffect(() => {
     refreshHackathons();
     refreshHackathonFeed();
-    const intervalId = window.setInterval(refreshHackathonFeed, 30000);
+    refreshPlacementFeed();
+    refreshNeoPatFeed();
+    const intervalId = window.setInterval(() => {
+      refreshHackathonFeed();
+      refreshPlacementFeed();
+      refreshNeoPatFeed();
+    }, 30000);
     return () => window.clearInterval(intervalId);
   }, []);
 
@@ -282,6 +298,36 @@ function App() {
     }
   }
 
+  async function refreshPlacementFeed() {
+    try {
+      const feed = await fetchAiosPlacements();
+      setPlacementFeed(feed);
+      setPlacementSourceMessage(
+        feed.unread_updates > 0
+          ? `${feed.unread_updates} unread placement update${feed.unread_updates === 1 ? "" : "s"}.`
+          : "Placement mail sources are up to date.",
+      );
+    } catch (error) {
+      setPlacementSourceMessage(
+        error instanceof Error ? error.message : "Unable to read placement sources from AiOS.",
+      );
+    }
+  }
+
+  async function refreshNeoPatFeed() {
+    try {
+      const feed = await fetchAiosNeoPat();
+      setNeopatFeed(feed);
+      setNeopatSourceMessage(
+        feed.unread_updates > 0
+          ? `${feed.unread_updates} unread NeoPat update${feed.unread_updates === 1 ? "" : "s"}.`
+          : "NeoPat practice-test mails are up to date.",
+      );
+    } catch (error) {
+      setNeopatSourceMessage(error instanceof Error ? error.message : "Unable to read NeoPat sources from AiOS.");
+    }
+  }
+
   async function handleRefreshHackathonSources() {
     setHackathonRefreshing(true);
     setHackathonSourceMessage("Scanning Gmail and platform sources.");
@@ -295,9 +341,28 @@ function App() {
     }
   }
 
+  async function handleRefreshPlacementSources() {
+    setPlacementRefreshing(true);
+    setPlacementSourceMessage("Scanning Gmail and job portal sources.");
+    try {
+      await refreshAiosPlacements();
+      await refreshPlacementFeed();
+    } catch (error) {
+      setPlacementSourceMessage(error instanceof Error ? error.message : "Placement source scan failed.");
+    } finally {
+      setPlacementRefreshing(false);
+    }
+  }
+
   async function handleMarkHackathonUpdateRead(updateId: number) {
     await markHackathonUpdateRead(updateId);
     await refreshHackathonFeed();
+  }
+
+  async function handleMarkPlacementUpdateRead(updateId: number) {
+    await markPlacementUpdateRead(updateId);
+    await refreshPlacementFeed();
+    await refreshNeoPatFeed();
   }
 
   async function handleAddSourceHackathon(sourceHackathon: AiosHackathon) {
@@ -792,6 +857,29 @@ function App() {
               onMarkRead={handleMarkHackathonUpdateRead}
               onRefresh={handleRefreshHackathonSources}
               refreshing={hackathonRefreshing}
+            />
+
+            <PlacementSourceFeed
+              feed={placementFeed}
+              folderName="Placement inbox"
+              emptyMessage="Run the Gmail connector from AiOS to pull openings, applications, OAs, interviews, offers, and rejections."
+              message={placementSourceMessage}
+              onMarkRead={handleMarkPlacementUpdateRead}
+              onRefresh={handleRefreshPlacementSources}
+              refreshing={placementRefreshing}
+              scanLabel="Scan jobs"
+            />
+
+            <PlacementSourceFeed
+              feed={neopatFeed}
+              folderName="NeoPat"
+              emptyMessage="NeoPat practice-test and training assessment mails will stay here, outside hackathons and placements."
+              message={neopatSourceMessage}
+              onMarkRead={handleMarkPlacementUpdateRead}
+              onRefresh={refreshNeoPatFeed}
+              refreshing={false}
+              scanLabel="Refresh"
+              variant="neopat"
             />
 
             <HackathonBoard
@@ -1293,14 +1381,16 @@ function HackathonSourceFeed({
   onRefresh: () => Promise<void>;
   refreshing: boolean;
 }) {
-  const sourceUpdates = (feed?.hackathons ?? [])
+  const [categoryFilter, setCategoryFilter] = useState<"all" | AiosHackathon["category"]>("all");
+  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "deadline" | "unread">("newest");
+  const filteredHackathons = (feed?.hackathons ?? []).filter(
+    (hackathon) => categoryFilter === "all" || hackathon.category === categoryFilter,
+  );
+  const sourceUpdates = filteredHackathons
     .flatMap((hackathon) => hackathon.updates.map((update) => ({ hackathon, update })))
-    .sort((left, right) => {
-      const leftDate = left.update.occurred_at || left.update.created_at;
-      const rightDate = right.update.occurred_at || right.update.created_at;
-      return rightDate.localeCompare(leftDate);
-    })
-    .slice(0, 8);
+    .sort((left, right) => sortHackathonUpdates(left, right, sortMode))
+    .slice(0, 12);
+  const categoryCounts = countHackathonCategories(feed?.hackathons ?? []);
 
   return (
     <section className="hackathon-source-feed">
@@ -1319,6 +1409,9 @@ function HackathonSourceFeed({
       </div>
 
       <div className="source-health-row">
+        {categoryCounts.map(({ label, value }) => (
+          <span className="source-health" key={label}>{label}: {value}</span>
+        ))}
         {(feed?.connectors ?? []).slice(0, 4).map((connector) => (
           <span className={`source-health ${connector.status}`} key={connector.id}>
             {formatConnectorName(connector.connector_id)}: {connector.records_imported} new
@@ -1327,16 +1420,58 @@ function HackathonSourceFeed({
         {!feed?.connectors.length && <span className="source-health">No source scan recorded yet</span>}
       </div>
 
+      <div className="source-sort-controls">
+        <label>
+          <span>Category</span>
+          <select
+            aria-label="Filter hackathons by category"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value as typeof categoryFilter)}
+          >
+            <option value="all">All categories</option>
+            <option value="applied">Applied</option>
+            <option value="opening">Openings</option>
+            <option value="live">Live</option>
+            <option value="previous">Previous</option>
+          </select>
+        </label>
+        <label>
+          <span>Sort</span>
+          <select
+            aria-label="Sort hackathons"
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value as typeof sortMode)}
+          >
+            <option value="newest">Newest received</option>
+            <option value="oldest">Oldest received</option>
+            <option value="deadline">Due soon</option>
+            <option value="unread">Unread first</option>
+          </select>
+        </label>
+        <span className="source-sort-count">
+          {filteredHackathons.length} item{filteredHackathons.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
       {sourceUpdates.length > 0 ? (
         <div className="hackathon-update-list">
           {sourceUpdates.map(({ hackathon, update }) => {
             const onBoard = Boolean(findMatchingLocalHackathon(hackathon, localHackathons));
             return (
               <article className={`hackathon-update-row ${update.is_read ? "" : "unread"}`} key={update.id}>
-                <span className="platform-badge">{formatConnectorName(update.platform)}</span>
+                <span className={`platform-badge hackathon-${hackathon.category}`}>{hackathon.status}</span>
                 <div>
                   <strong>{hackathon.title}</strong>
                   <span>{update.title}</span>
+                  <div className="placement-metrics">
+                    <span>{formatHackathonCategory(hackathon.category)}</span>
+                    <span>{formatConnectorName(update.platform)}</span>
+                    <span>Received {formatDateTime(update.received_at)}</span>
+                    {hackathon.applied_at && <span>Applied {formatDateTime(hackathon.applied_at)}</span>}
+                    {hackathon.deadline && <span>Due {formatDeadline(hackathon.deadline).text}</span>}
+                    <span>{hackathon.metrics.total_updates} update{hackathon.metrics.total_updates === 1 ? "" : "s"}</span>
+                    {hackathon.metrics.unread_updates > 0 && <span>{hackathon.metrics.unread_updates} unread</span>}
+                  </div>
                   <small>{update.action_needed || update.summary || "Review this platform update."}</small>
                 </div>
                 <div className="hackathon-update-actions">
@@ -1355,17 +1490,27 @@ function HackathonSourceFeed({
             );
           })}
         </div>
-      ) : feed?.hackathons.length ? (
+      ) : filteredHackathons.length ? (
         <div className="hackathon-update-list">
-          {feed.hackathons.slice(0, 8).map((hackathon) => {
+          {[...filteredHackathons]
+            .sort((left, right) => sortHackathons(left, right, sortMode))
+            .slice(0, 12)
+            .map((hackathon) => {
             const onBoard = Boolean(findMatchingLocalHackathon(hackathon, localHackathons));
 
             return (
               <article className="hackathon-update-row" key={`source-${hackathon.id}`}>
-                <span className="platform-badge">{formatConnectorName(hackathon.platform)}</span>
+                <span className={`platform-badge hackathon-${hackathon.category}`}>{hackathon.status}</span>
                 <div>
                   <strong>{hackathon.title}</strong>
-                  <span>{hackathon.status}</span>
+                  <span>{formatHackathonCategory(hackathon.category)}</span>
+                  <div className="placement-metrics">
+                    <span>{formatConnectorName(hackathon.platform)}</span>
+                    <span>Received {formatDateTime(hackathon.received_at)}</span>
+                    {hackathon.applied_at && <span>Applied {formatDateTime(hackathon.applied_at)}</span>}
+                    {hackathon.deadline && <span>Due {formatDeadline(hackathon.deadline).text}</span>}
+                    <span>{hackathon.metrics.total_updates} update{hackathon.metrics.total_updates === 1 ? "" : "s"}</span>
+                  </div>
                   <small>{hackathon.notes || "Detected by AiOS hackathon sources."}</small>
                 </div>
                 <div className="hackathon-update-actions">
@@ -1383,8 +1528,124 @@ function HackathonSourceFeed({
         </div>
       ) : (
         <div className="compact-empty-state">
-          <strong>No source updates yet</strong>
-          <span>Run the Gmail or Hackathon Platforms connector, or visit a supported platform with the extension enabled.</span>
+          <strong>No hackathons in this category</strong>
+          <span>Choose another category or run the Gmail and Hackathon Platforms connectors.</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PlacementSourceFeed({
+  emptyMessage,
+  feed,
+  folderName,
+  message,
+  onMarkRead,
+  onRefresh,
+  refreshing,
+  scanLabel,
+  variant = "placement",
+}: {
+  emptyMessage: string;
+  feed: PlacementFeed | null;
+  folderName: string;
+  message: string;
+  onMarkRead: (updateId: number) => Promise<void>;
+  onRefresh: () => Promise<void>;
+  refreshing: boolean;
+  scanLabel: string;
+  variant?: "placement" | "neopat";
+}) {
+  const sourceUpdates = (feed?.placements ?? [])
+    .flatMap((placement) => placement.updates.map((update) => ({ placement, update })))
+    .sort((left, right) => {
+      const leftDate = left.update.occurred_at || left.update.created_at;
+      const rightDate = right.update.occurred_at || right.update.created_at;
+      return rightDate.localeCompare(leftDate);
+    })
+    .slice(0, 8);
+
+  return (
+    <section className={`hackathon-source-feed placement-source-feed ${variant}`}>
+      <div className="hackathon-source-heading">
+        <div>
+          <span className={`source-icon ${variant}`}><BriefcaseBusiness size={18} /></span>
+          <div>
+            <strong>{folderName}</strong>
+            <small>{message}</small>
+          </div>
+        </div>
+        <button className="text-button" disabled={refreshing} onClick={onRefresh}>
+          <RefreshCw className={refreshing ? "spin" : ""} size={16} />
+          {refreshing ? "Scanning" : scanLabel}
+        </button>
+      </div>
+
+      <div className="source-health-row">
+        {(feed?.connectors ?? []).slice(0, 4).map((connector) => (
+          <span className={`source-health ${connector.status}`} key={connector.id}>
+            {formatConnectorName(connector.connector_id)}: {connector.records_imported} new
+          </span>
+        ))}
+        {!feed?.connectors.length && <span className="source-health">No placement scan recorded yet</span>}
+      </div>
+
+      {sourceUpdates.length > 0 ? (
+        <div className="hackathon-update-list">
+          {sourceUpdates.map(({ placement, update }) => (
+            <article className={`hackathon-update-row ${update.is_read ? "" : "unread"}`} key={update.id}>
+              <span className={`platform-badge ${variant}`}>{placement.status}</span>
+              <div>
+                <strong>{placement.company || placement.title}</strong>
+                <span>{update.title}</span>
+                <div className="placement-metrics">
+                  <span>{variant === "neopat" ? "Practice" : placement.metrics.has_applied ? "Applied" : "Opening"}</span>
+                  <span>Received {formatDateTime(update.received_at)}</span>
+                  {variant !== "neopat" && placement.applied_at && <span>Applied {formatDateTime(placement.applied_at)}</span>}
+                  {placement.deadline && <span>Due {formatDeadline(placement.deadline).text}</span>}
+                  <span>{placement.metrics.total_updates} update{placement.metrics.total_updates === 1 ? "" : "s"}</span>
+                  {placement.metrics.unread_updates > 0 && <span>{placement.metrics.unread_updates} unread</span>}
+                </div>
+                <small>{update.action_needed || update.summary || "Review this placement update."}</small>
+              </div>
+              <div className="hackathon-update-actions">
+                {!update.is_read && (
+                  <button className="icon-button" title="Mark as read" onClick={() => onMarkRead(update.id)}>
+                    <Check size={16} />
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : feed?.placements.length ? (
+        <div className="hackathon-update-list">
+          {feed.placements.slice(0, 8).map((placement) => (
+            <article className="hackathon-update-row" key={`placement-${placement.id}`}>
+              <span className={`platform-badge ${variant}`}>{placement.status}</span>
+              <div>
+                <strong>{placement.company || placement.title}</strong>
+                <span>{placement.title}</span>
+                <div className="placement-metrics">
+                  <span>{variant === "neopat" ? "Practice" : placement.metrics.has_applied ? "Applied" : "Opening"}</span>
+                  <span>Received {formatDateTime(placement.received_at)}</span>
+                  {variant !== "neopat" && placement.applied_at && <span>Applied {formatDateTime(placement.applied_at)}</span>}
+                  {placement.deadline && <span>Due {formatDeadline(placement.deadline).text}</span>}
+                  <span>{placement.metrics.total_updates} update{placement.metrics.total_updates === 1 ? "" : "s"}</span>
+                </div>
+                <small>{placement.notes || "Detected by AiOS placement sources."}</small>
+              </div>
+              <div className="hackathon-update-actions">
+                <span className="source-health ok">Tracked</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="compact-empty-state">
+          <strong>No {folderName.toLowerCase()} updates yet</strong>
+          <span>{emptyMessage}</span>
         </div>
       )}
     </section>
@@ -1699,6 +1960,84 @@ function formatTimelineDate(date: string): string {
   return Number.isNaN(parsed.getTime())
     ? date
     : parsed.toLocaleDateString([], { day: "2-digit", month: "short" });
+}
+
+function formatDateTime(date: string): string {
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime())
+    ? date
+    : parsed.toLocaleString([], {
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        month: "short",
+      });
+}
+
+function countHackathonCategories(hackathons: AiosHackathon[]): { label: string; value: number }[] {
+  const counts = hackathons.reduce(
+    (accumulator, hackathon) => {
+      accumulator[hackathon.category] += 1;
+      return accumulator;
+    },
+    { applied: 0, live: 0, opening: 0, previous: 0 },
+  );
+  return [
+    { label: "Applied", value: counts.applied },
+    { label: "Open", value: counts.opening + counts.live },
+    { label: "Previous", value: counts.previous },
+  ].filter((item) => item.value > 0);
+}
+
+function sortHackathonUpdates(
+  left: { hackathon: AiosHackathon; update: AiosHackathon["updates"][number] },
+  right: { hackathon: AiosHackathon; update: AiosHackathon["updates"][number] },
+  mode: "newest" | "oldest" | "deadline" | "unread",
+): number {
+  if (mode === "deadline") {
+    return compareOptionalDates(left.hackathon.deadline, right.hackathon.deadline);
+  }
+  if (mode === "unread") {
+    const unreadDifference = Number(left.update.is_read) - Number(right.update.is_read);
+    if (unreadDifference !== 0) return unreadDifference;
+  }
+
+  const leftDate = left.update.received_at || left.update.occurred_at || left.update.created_at;
+  const rightDate = right.update.received_at || right.update.occurred_at || right.update.created_at;
+  return mode === "oldest"
+    ? leftDate.localeCompare(rightDate)
+    : rightDate.localeCompare(leftDate);
+}
+
+function sortHackathons(
+  left: AiosHackathon,
+  right: AiosHackathon,
+  mode: "newest" | "oldest" | "deadline" | "unread",
+): number {
+  if (mode === "deadline") {
+    return compareOptionalDates(left.deadline, right.deadline);
+  }
+  if (mode === "unread") {
+    const unreadDifference = right.unread_updates - left.unread_updates;
+    if (unreadDifference !== 0) return unreadDifference;
+  }
+  return mode === "oldest"
+    ? left.received_at.localeCompare(right.received_at)
+    : right.received_at.localeCompare(left.received_at);
+}
+
+function compareOptionalDates(left: string | null, right: string | null): number {
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  return left.localeCompare(right);
+}
+
+function formatHackathonCategory(category: AiosHackathon["category"]): string {
+  if (category === "applied") return "Applied";
+  if (category === "live") return "Live";
+  if (category === "previous") return "Previous";
+  return "Opening";
 }
 
 function mapSourceHackathonStatus(status: string): HackathonStatus {

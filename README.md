@@ -140,7 +140,7 @@ The Hackathon Corner combines:
 - connector health and manual `Scan now`
 - one-click addition of discovered hackathons to the local build board
 
-The source inbox polls `GET http://127.0.0.1:5000/api/hackathons` every 30 seconds. AiOS performs the Gmail/platform monitoring, keeping credentials and source processing out of the wellbeing UI.
+The source inbox polls `GET http://127.0.0.1:5000/api/hackathons` and `GET http://127.0.0.1:5000/api/placements` every 30 seconds. AiOS performs the Gmail/platform monitoring, keeping credentials and source processing out of the wellbeing UI.
 
 Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates in `data/hackathons.json`.
 

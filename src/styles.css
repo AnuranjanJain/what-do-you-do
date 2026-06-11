@@ -1800,6 +1800,14 @@ h2 {
   background: linear-gradient(135deg, #0891b2, #8b5cf6);
 }
 
+.source-icon.placement {
+  background: linear-gradient(135deg, #22c55e, #06b6d4);
+}
+
+.source-icon.neopat {
+  background: linear-gradient(135deg, #f59e0b, #ec4899);
+}
+
 .source-health-row {
   display: flex;
   gap: 8px;
@@ -1832,6 +1840,53 @@ h2 {
   background: rgba(245, 158, 11, 0.1);
 }
 
+.source-sort-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(150px, 220px) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.source-sort-controls label {
+  display: grid;
+  gap: 6px;
+}
+
+.source-sort-controls label > span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.source-sort-controls select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 34px 0 11px;
+}
+
+.source-sort-controls select:focus {
+  border-color: rgba(34, 211, 238, 0.55);
+}
+
+.source-sort-controls option {
+  color: #111827;
+}
+
+.source-sort-count {
+  justify-self: end;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  font-weight: 800;
+  padding-bottom: 10px;
+}
+
 .hackathon-update-list {
   display: grid;
   gap: 8px;
@@ -1857,6 +1912,55 @@ h2 {
   align-self: start;
   padding: 6px 9px;
   color: #d8b4fe;
+}
+
+.platform-badge.placement {
+  color: #bbf7d0;
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.platform-badge.neopat {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.platform-badge.hackathon-applied {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.28);
+  background: rgba(59, 130, 246, 0.11);
+}
+
+.platform-badge.hackathon-opening,
+.platform-badge.hackathon-live {
+  color: #d8b4fe;
+  border-color: rgba(168, 85, 247, 0.25);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.platform-badge.hackathon-previous {
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.placement-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.placement-metrics span {
+  margin-top: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 850;
+  padding: 5px 8px;
 }
 
 .hackathon-update-row > div:nth-child(2) {
@@ -2271,6 +2375,15 @@ h2 {
 
   .hackathon-update-row {
     grid-template-columns: 1fr;
+  }
+
+  .source-sort-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .source-sort-count {
+    justify-self: start;
+    padding-bottom: 0;
   }
 
   .hackathon-update-actions,
