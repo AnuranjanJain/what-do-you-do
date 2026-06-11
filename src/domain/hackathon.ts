@@ -49,6 +49,7 @@ export type HackathonSourceUpdate = {
   action_needed: string;
   deadline: string | null;
   is_read: boolean;
+  received_at: string;
   occurred_at: string | null;
   created_at: string;
 };
@@ -59,10 +60,20 @@ export type AiosHackathon = {
   organizer: string;
   platform: string;
   status: string;
+  category: "opening" | "live" | "applied" | "previous";
   source: string;
   deadline: string | null;
+  applied_at: string | null;
+  received_at: string;
   notes: string;
   unread_updates: number;
+  metrics: {
+    total_updates: number;
+    unread_updates: number;
+    has_applied: boolean;
+    days_since_applied: number | null;
+    days_to_deadline: number | null;
+  };
   updated_at: string;
   updates: HackathonSourceUpdate[];
 };
@@ -79,6 +90,50 @@ export type HackathonConnectorRun = {
 
 export type HackathonFeed = {
   hackathons: AiosHackathon[];
+  connectors: HackathonConnectorRun[];
+  unread_updates: number;
+  updated_at: string;
+};
+
+export type PlacementSourceUpdate = {
+  id: number;
+  source: string;
+  event_type: string;
+  title: string;
+  summary: string;
+  action_needed: string;
+  deadline: string | null;
+  is_read: boolean;
+  received_at: string;
+  occurred_at: string | null;
+  created_at: string;
+};
+
+export type AiosPlacement = {
+  id: number;
+  title: string;
+  company: string;
+  status: string;
+  category: string;
+  source: string;
+  deadline: string | null;
+  applied_at: string | null;
+  received_at: string;
+  notes: string;
+  unread_updates: number;
+  metrics: {
+    total_updates: number;
+    unread_updates: number;
+    has_applied: boolean;
+    days_since_applied: number | null;
+    days_to_deadline: number | null;
+  };
+  updated_at: string;
+  updates: PlacementSourceUpdate[];
+};
+
+export type PlacementFeed = {
+  placements: AiosPlacement[];
   connectors: HackathonConnectorRun[];
   unread_updates: number;
   updated_at: string;

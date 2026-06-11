@@ -1,4 +1,4 @@
-import { AiosHackathon, Hackathon, HackathonDraft, HackathonFeed } from "../domain/hackathon";
+import { AiosHackathon, Hackathon, HackathonDraft, HackathonFeed, PlacementFeed } from "../domain/hackathon";
 import { getAiosBaseUrl } from "./aios";
 
 const collectorBaseUrl = "http://127.0.0.1:17321";
@@ -81,7 +81,7 @@ export async function deleteHackathon(hackathonId: string): Promise<void> {
 }
 
 export async function fetchAiosHackathons(): Promise<HackathonFeed> {
-  const response = await fetch(`${getAiosBaseUrl()}/api/hackathons`, {
+  const response = await fetchAiosSource("/api/hackathons", {
     cache: "no-store",
     credentials: "include",
   });
@@ -97,7 +97,7 @@ export async function fetchAiosHackathons(): Promise<HackathonFeed> {
 }
 
 export async function refreshAiosHackathons(): Promise<void> {
-  const response = await fetch(`${getAiosBaseUrl()}/api/hackathons/refresh`, {
+  const response = await fetchAiosSource("/api/hackathons/refresh", {
     cache: "no-store",
     credentials: "include",
     method: "POST",
@@ -113,7 +113,7 @@ export async function refreshAiosHackathons(): Promise<void> {
 }
 
 export async function markHackathonUpdateRead(updateId: number): Promise<void> {
-  const response = await fetch(`${getAiosBaseUrl()}/api/hackathon-updates/${updateId}/read`, {
+  const response = await fetchAiosSource(`/api/hackathon-updates/${updateId}/read`, {
     cache: "no-store",
     credentials: "include",
     method: "POST",
@@ -121,6 +121,66 @@ export async function markHackathonUpdateRead(updateId: number): Promise<void> {
 
   if (!response.ok) {
     throw new Error(`Unable to mark update as read: ${response.status}`);
+  }
+}
+
+export async function fetchAiosPlacements(): Promise<PlacementFeed> {
+  const response = await fetchAiosSource("/api/placements", {
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  if (response.status === 401) {
+    throw new Error("AiOS is locked. Unlock it to receive placement updates.");
+  }
+  if (!response.ok) {
+    throw new Error(`AiOS placement feed responded with ${response.status}`);
+  }
+
+  return response.json() as Promise<PlacementFeed>;
+}
+
+export async function fetchAiosNeoPat(): Promise<PlacementFeed> {
+  const response = await fetchAiosSource("/api/neopat", {
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  if (response.status === 401) {
+    throw new Error("AiOS is locked. Unlock it to receive NeoPat updates.");
+  }
+  if (!response.ok) {
+    throw new Error(`AiOS NeoPat feed responded with ${response.status}`);
+  }
+
+  return response.json() as Promise<PlacementFeed>;
+}
+
+export async function refreshAiosPlacements(): Promise<void> {
+  const response = await fetchAiosSource("/api/placements/refresh", {
+    cache: "no-store",
+    credentials: "include",
+    method: "POST",
+  });
+
+  if (response.status === 401) {
+    throw new Error("AiOS is locked. Unlock it before scanning placement sources.");
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error ?? `Placement scan failed with ${response.status}`);
+  }
+}
+
+export async function markPlacementUpdateRead(updateId: number): Promise<void> {
+  const response = await fetchAiosSource(`/api/placement-updates/${updateId}/read`, {
+    cache: "no-store",
+    credentials: "include",
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to mark placement update as read: ${response.status}`);
   }
 }
 
@@ -137,4 +197,23 @@ export function findMatchingLocalHackathon(
 
 function normalizeTitle(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+async function fetchAiosSource(path: string, init: RequestInit): Promise<Response> {
+  const urls = Array.from(new Set([getAiosBaseUrl(), "http://127.0.0.1:5000"]));
+  let lastError: unknown = null;
+
+  for (const baseUrl of urls) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, init);
+      if (response.ok || response.status === 401) {
+        return response;
+      }
+      lastError = new Error(`AiOS source responded with ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Unable to reach AiOS source feed.");
 }
