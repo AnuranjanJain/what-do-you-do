@@ -1741,6 +1741,423 @@ h2 {
     rgba(6, 2, 20, 0.28);
 }
 
+.hackathon-panel {
+  grid-column: 1 / -1;
+}
+
+.hackathon-source-feed {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hackathon-source-heading,
+.hackathon-source-heading > div,
+.hackathon-card-heading,
+.hackathon-dates,
+.hackathon-progress > div:first-child,
+.form-actions {
+  display: flex;
+  align-items: center;
+}
+
+.hackathon-source-heading,
+.hackathon-card-heading,
+.hackathon-dates,
+.hackathon-progress > div:first-child,
+.form-actions {
+  justify-content: space-between;
+}
+
+.hackathon-source-heading {
+  gap: 12px;
+}
+
+.hackathon-source-heading > div {
+  gap: 10px;
+  min-width: 0;
+}
+
+.hackathon-source-heading strong,
+.hackathon-source-heading small {
+  display: block;
+}
+
+.hackathon-source-heading small {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.source-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0891b2, #8b5cf6);
+}
+
+.source-health-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.source-health,
+.platform-badge {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.source-health {
+  padding: 7px 10px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.source-health.ok {
+  color: #a7f3d0;
+  border-color: rgba(52, 211, 153, 0.28);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.source-health.setup_required {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.hackathon-update-list {
+  display: grid;
+  gap: 8px;
+}
+
+.hackathon-update-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(5, 2, 18, 0.2);
+}
+
+.hackathon-update-row.unread {
+  border-color: rgba(34, 211, 238, 0.3);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.platform-badge {
+  align-self: start;
+  padding: 6px 9px;
+  color: #d8b4fe;
+}
+
+.hackathon-update-row > div:nth-child(2) {
+  min-width: 0;
+}
+
+.hackathon-update-row strong,
+.hackathon-update-row span,
+.hackathon-update-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.hackathon-update-row span {
+  margin-top: 3px;
+  font-size: 13px;
+}
+
+.hackathon-update-row small {
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.4;
+}
+
+.hackathon-update-actions,
+.hackathon-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hackathon-card-actions button,
+.timeline-entry-form button {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hackathon-card-actions button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.hackathon-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.hackathon-column {
+  min-width: 230px;
+}
+
+.hackathon-column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0 4px;
+}
+
+.hackathon-column > header span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.hackathon-column-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.hackathon-column-empty {
+  min-height: 92px;
+  padding: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 12px;
+}
+
+.hackathon-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(5, 2, 18, 0.24);
+}
+
+.hackathon-card-heading {
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.hackathon-card-heading > div:first-child {
+  min-width: 0;
+}
+
+.hackathon-card-heading strong,
+.hackathon-card-heading span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.hackathon-card-heading span,
+.hackathon-copy p,
+.hackathon-timeline p {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+}
+
+.hackathon-card-heading span {
+  margin-top: 4px;
+}
+
+.hackathon-dates {
+  gap: 8px;
+  font-size: 11px;
+}
+
+.hackathon-dates span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hackathon-dates .good {
+  color: #86efac;
+}
+
+.hackathon-dates .warning {
+  color: #fde68a;
+}
+
+.hackathon-dates .danger {
+  color: #fda4af;
+}
+
+.hackathon-progress {
+  display: grid;
+  gap: 7px;
+}
+
+.hackathon-progress > div:first-child {
+  font-size: 11px;
+}
+
+.hackathon-progress > div:last-child {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hackathon-progress > div:last-child span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #a855f7);
+}
+
+.hackathon-copy span,
+.hackathon-timeline > span {
+  color: #d8b4fe;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hackathon-copy p,
+.hackathon-timeline p {
+  margin: 5px 0 0;
+  line-height: 1.45;
+}
+
+.hackathon-link {
+  color: #9ee7ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.hackathon-timeline {
+  display: grid;
+  gap: 8px;
+}
+
+.hackathon-timeline > div:not(.timeline-entry-form) {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.hackathon-timeline time {
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 10px;
+}
+
+.hackathon-timeline p {
+  margin: 0;
+}
+
+.timeline-entry-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 7px;
+}
+
+.timeline-entry-form input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 9px;
+}
+
+.timeline-entry-form button {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.hackathon-form {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(168, 85, 247, 0.24);
+  border-radius: 16px;
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.hackathon-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hackathon-form-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.hackathon-form-grid label.wide {
+  grid-column: 1 / -1;
+}
+
+.hackathon-form-grid label > span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.hackathon-form input,
+.hackathon-form select,
+.hackathon-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #ffffff;
+  background: rgba(5, 2, 18, 0.3);
+  padding: 10px;
+  font: inherit;
+}
+
+.hackathon-form textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.form-actions {
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .settings-panel {
   grid-column: 1 / -1;
 }
@@ -1850,6 +2267,33 @@ h2 {
   .hackathon-form-grid,
   .top-app-row {
     grid-template-columns: 1fr;
+  }
+
+  .hackathon-update-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hackathon-update-actions,
+  .hackathon-source-heading {
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .hackathon-source-heading {
+    align-items: flex-start;
+  }
+
+  .hackathon-update-row {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-badge {
+    width: max-content;
+  }
+
+  .hackathon-update-actions {
+    justify-content: flex-start;
   }
 
   .hero {

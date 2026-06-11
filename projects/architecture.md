@@ -238,6 +238,21 @@ Privacy-safe payload:
 
 The bridge intentionally excludes raw window titles, screenshots, keystrokes, URLs, private messages, files, and full private notes.
 
+## Hackathon monitoring flow
+
+```mermaid
+flowchart LR
+    A["Gmail read-only scan"] --> D["AiOS hackathon normalizer"]
+    B["Known platform page capture"] --> D
+    C["Platform JSON or CSV exports"] --> D
+    D --> E["Deduplicated opportunity and update store"]
+    E --> F["Local /api/hackathons feed"]
+    F --> G["What Do You Do source inbox"]
+    G --> H["Local build board"]
+```
+
+The monitor does not store platform passwords or automate login forms. Gmail uses local OAuth credentials, known platform pages are captured by the local extension, and unsupported platform data can be imported through local files.
+
 ## Integration contract
 
 `What Do You Do` should not directly become the whole assistant. It should expose approved context to `Project AI Agent`.

@@ -11,6 +11,7 @@ import {
   Code2,
   Database,
   EyeOff,
+  Inbox,
   Gamepad2,
   Gauge,
   LayoutDashboard,
@@ -21,6 +22,7 @@ import {
   Pause,
   PieChart,
   Plus,
+  RefreshCw,
   StickyNote,
   Search,
   Settings2,
@@ -44,8 +46,10 @@ import {
   todayDateKey,
 } from "./domain/activity";
 import {
+  AiosHackathon,
   Hackathon,
   HackathonDraft,
+  HackathonFeed,
   HackathonStatus,
   emptyHackathonDraft,
 } from "./domain/hackathon";
@@ -63,7 +67,11 @@ import { correctLiveSession, fetchLiveSessions, saveSessionNote } from "./servic
 import {
   addHackathonTimelineEntry,
   deleteHackathon,
+  fetchAiosHackathons,
   fetchHackathons,
+  findMatchingLocalHackathon,
+  markHackathonUpdateRead,
+  refreshAiosHackathons,
   saveHackathon,
 } from "./services/hackathons";
 import "./styles.css";
@@ -141,7 +149,10 @@ function App() {
   const [noteMode, setNoteMode] = useState(false);
   const [noteMessage, setNoteMessage] = useState("");
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [hackathonFeed, setHackathonFeed] = useState<HackathonFeed | null>(null);
   const [hackathonMessage, setHackathonMessage] = useState("Loading local hackathon tracker.");
+  const [hackathonSourceMessage, setHackathonSourceMessage] = useState("Connecting to AiOS sources.");
+  const [hackathonRefreshing, setHackathonRefreshing] = useState(false);
   const [hackathonFormOpen, setHackathonFormOpen] = useState(false);
   const [editingHackathon, setEditingHackathon] = useState<Hackathon | null>(null);
   const [sessions, setSessions] = useState<ActivitySession[]>(() => simulateTodayActivity());
@@ -183,6 +194,9 @@ function App() {
 
   useEffect(() => {
     refreshHackathons();
+    refreshHackathonFeed();
+    const intervalId = window.setInterval(refreshHackathonFeed, 30000);
+    return () => window.clearInterval(intervalId);
   }, []);
 
   const summary = useMemo(
@@ -241,6 +255,69 @@ function App() {
         error instanceof Error ? error.message : "Start the local collector to use hackathon tracking.",
       );
     }
+  }
+
+  async function refreshHackathonFeed() {
+    try {
+      const feed = await fetchAiosHackathons();
+      setHackathonFeed(feed);
+      setHackathonSourceMessage(
+        feed.unread_updates > 0
+          ? `${feed.unread_updates} unread source update${feed.unread_updates === 1 ? "" : "s"}.`
+          : "Mail and platform sources are up to date.",
+      );
+    } catch (error) {
+      setHackathonSourceMessage(
+        error instanceof Error ? error.message : "Unable to read hackathon sources from AiOS.",
+      );
+    }
+  }
+
+  async function handleRefreshHackathonSources() {
+    setHackathonRefreshing(true);
+    setHackathonSourceMessage("Scanning Gmail and platform sources.");
+    try {
+      await refreshAiosHackathons();
+      await refreshHackathonFeed();
+    } catch (error) {
+      setHackathonSourceMessage(error instanceof Error ? error.message : "Hackathon source scan failed.");
+    } finally {
+      setHackathonRefreshing(false);
+    }
+  }
+
+  async function handleMarkHackathonUpdateRead(updateId: number) {
+    await markHackathonUpdateRead(updateId);
+    await refreshHackathonFeed();
+  }
+
+  async function handleAddSourceHackathon(sourceHackathon: AiosHackathon) {
+    const existing = findMatchingLocalHackathon(sourceHackathon, hackathons);
+    if (existing) {
+      setEditingHackathon(existing);
+      setHackathonFormOpen(true);
+      setHackathonMessage("This source is already on your board. Review and update its plan.");
+      return;
+    }
+
+    await saveHackathon({
+      title: sourceHackathon.title,
+      organizer: sourceHackathon.organizer,
+      url: "",
+      status: mapSourceHackathonStatus(sourceHackathon.status),
+      appliedDate: sourceHackathon.status === "Applied" ? todayDateKey() : "",
+      deadline: sourceHackathon.deadline?.slice(0, 10) ?? "",
+      progress: sourceHackathon.status === "Submitted" ? 100 : 0,
+      plan: sourceHackathon.updates[0]?.action_needed || sourceHackathon.notes,
+      workDone: sourceHackathon.updates[0]?.summary || "",
+      timeline: sourceHackathon.updates.slice(0, 8).map((update) => ({
+        id: `aios-${update.id}`,
+        date: update.occurred_at || update.created_at,
+        note: `${update.platform}: ${update.title}`,
+      })),
+    });
+    await refreshHackathons();
+    setHackathonMessage(`${sourceHackathon.title} added from AiOS sources.`);
   }
 
   async function handleSaveHackathon(draft: HackathonDraft) {
@@ -671,6 +748,16 @@ function App() {
                 onSave={handleSaveHackathon}
               />
             )}
+
+            <HackathonSourceFeed
+              feed={hackathonFeed}
+              localHackathons={hackathons}
+              message={hackathonSourceMessage}
+              onAdd={handleAddSourceHackathon}
+              onMarkRead={handleMarkHackathonUpdateRead}
+              onRefresh={handleRefreshHackathonSources}
+              refreshing={hackathonRefreshing}
+            />
 
             <HackathonBoard
               hackathons={hackathons}
@@ -1154,6 +1241,121 @@ function DailyInsightsPanel({ summary }: { summary: ReturnType<typeof buildDashb
   );
 }
 
+function HackathonSourceFeed({
+  feed,
+  localHackathons,
+  message,
+  onAdd,
+  onMarkRead,
+  onRefresh,
+  refreshing,
+}: {
+  feed: HackathonFeed | null;
+  localHackathons: Hackathon[];
+  message: string;
+  onAdd: (hackathon: AiosHackathon) => Promise<void>;
+  onMarkRead: (updateId: number) => Promise<void>;
+  onRefresh: () => Promise<void>;
+  refreshing: boolean;
+}) {
+  const sourceUpdates = (feed?.hackathons ?? [])
+    .flatMap((hackathon) => hackathon.updates.map((update) => ({ hackathon, update })))
+    .sort((left, right) => {
+      const leftDate = left.update.occurred_at || left.update.created_at;
+      const rightDate = right.update.occurred_at || right.update.created_at;
+      return rightDate.localeCompare(leftDate);
+    })
+    .slice(0, 8);
+
+  return (
+    <section className="hackathon-source-feed">
+      <div className="hackathon-source-heading">
+        <div>
+          <span className="source-icon"><Inbox size={18} /></span>
+          <div>
+            <strong>Live source inbox</strong>
+            <small>{message}</small>
+          </div>
+        </div>
+        <button className="text-button" disabled={refreshing} onClick={onRefresh}>
+          <RefreshCw className={refreshing ? "spin" : ""} size={16} />
+          {refreshing ? "Scanning" : "Scan now"}
+        </button>
+      </div>
+
+      <div className="source-health-row">
+        {(feed?.connectors ?? []).slice(0, 4).map((connector) => (
+          <span className={`source-health ${connector.status}`} key={connector.id}>
+            {formatConnectorName(connector.connector_id)}: {connector.records_imported} new
+          </span>
+        ))}
+        {!feed?.connectors.length && <span className="source-health">No source scan recorded yet</span>}
+      </div>
+
+      {sourceUpdates.length > 0 ? (
+        <div className="hackathon-update-list">
+          {sourceUpdates.map(({ hackathon, update }) => {
+            const onBoard = Boolean(findMatchingLocalHackathon(hackathon, localHackathons));
+            return (
+              <article className={`hackathon-update-row ${update.is_read ? "" : "unread"}`} key={update.id}>
+                <span className="platform-badge">{formatConnectorName(update.platform)}</span>
+                <div>
+                  <strong>{hackathon.title}</strong>
+                  <span>{update.title}</span>
+                  <small>{update.action_needed || update.summary || "Review this platform update."}</small>
+                </div>
+                <div className="hackathon-update-actions">
+                  {!onBoard && (
+                    <button className="text-button" onClick={() => onAdd(hackathon)}>
+                      Add to board
+                    </button>
+                  )}
+                  {!update.is_read && (
+                    <button className="icon-button" title="Mark as read" onClick={() => onMarkRead(update.id)}>
+                      <Check size={16} />
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : feed?.hackathons.length ? (
+        <div className="hackathon-update-list">
+          {feed.hackathons.slice(0, 8).map((hackathon) => {
+            const onBoard = Boolean(findMatchingLocalHackathon(hackathon, localHackathons));
+
+            return (
+              <article className="hackathon-update-row" key={`source-${hackathon.id}`}>
+                <span className="platform-badge">{formatConnectorName(hackathon.platform)}</span>
+                <div>
+                  <strong>{hackathon.title}</strong>
+                  <span>{hackathon.status}</span>
+                  <small>{hackathon.notes || "Detected by AiOS hackathon sources."}</small>
+                </div>
+                <div className="hackathon-update-actions">
+                  {!onBoard ? (
+                    <button className="text-button" onClick={() => onAdd(hackathon)}>
+                      Add to board
+                    </button>
+                  ) : (
+                    <span className="source-health ok">On board</span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="compact-empty-state">
+          <strong>No source updates yet</strong>
+          <span>Run the Gmail or Hackathon Platforms connector, or visit a supported platform with the extension enabled.</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function HackathonForm({
   hackathon,
   onCancel,
@@ -1462,6 +1664,25 @@ function formatTimelineDate(date: string): string {
   return Number.isNaN(parsed.getTime())
     ? date
     : parsed.toLocaleDateString([], { day: "2-digit", month: "short" });
+}
+
+function mapSourceHackathonStatus(status: string): HackathonStatus {
+  const lowered = status.toLowerCase();
+  if (lowered.includes("submit") || lowered.includes("result") || lowered.includes("closed")) return "submitted";
+  if (lowered.includes("deadline") || lowered.includes("shortlist") || lowered.includes("team")) return "building";
+  if (lowered.includes("applied") || lowered.includes("registration")) return "applied";
+  return "watching";
+}
+
+function formatConnectorName(value: string): string {
+  if (value === "hack2skill") return "Hack2Skill";
+  if (value === "hackerearth") return "HackerEarth";
+  if (value === "devfolio") return "Devfolio";
+  if (value === "devpost") return "Devpost";
+  if (value === "gmail") return "Gmail";
+  if (value === "hackathon_platforms") return "Platforms";
+  if (value === "unstop") return "Unstop";
+  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function PermissionRow({ permission }: { permission: PrivacyPermission }) {

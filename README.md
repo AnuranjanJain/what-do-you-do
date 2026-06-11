@@ -72,14 +72,20 @@ The bridge sends only:
 
 It does not send screenshots, keystrokes, raw window titles, private messages, browser history, files, or full notes.
 
-## Hackathon Tracker
+## Hackathon Corner
 
-The dashboard includes a four-column hackathon workflow:
+The Hackathon Corner combines:
 
-- Watching
-- Applied
-- Building
-- Submitted
+- a local four-stage board: Watching, Applied, Building, Submitted
+- manual plans, progress, work logs, deadlines, and timeline entries
+- a live AiOS source inbox for Gmail and platform updates
+- unread update controls
+- connector health and manual `Scan now`
+- one-click addition of discovered hackathons to the local build board
+
+The source inbox polls `GET http://127.0.0.1:5000/api/hackathons` every 30 seconds. AiOS performs the actual Gmail/platform monitoring, keeping credentials and source processing out of the wellbeing UI.
+
+Start the monitor from AiOS `/workers` after configuring Gmail OAuth or `imports/hackathons`.
 
 Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates. Data stays local in `data/hackathons.json`.
 
