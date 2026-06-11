@@ -1,52 +1,94 @@
 # What Do You Do
 
-Initial build for a privacy-first digital wellbeing app that understands what the user actually did across PC and mobile.
+Privacy-first activity intelligence for desktop and mobile. The app helps a user understand what they actually did across the day: coding, researching, browsing, gaming, Discord, learning, idle time, hackathon work, reminders, notes, and AI-agent-assisted productivity.
 
-## Current MVP
-
-- React + Vite dashboard
-- Typed local activity/session models
-- Simulated local activity timeline
-- Computed dashboard metrics and activity summaries
-- Privacy controls surface
-- Project AI Agent integration gate
-- Live AiOS Assistant bridge for local wellbeing activity sync
-- Local hackathon tracker with application dates, deadlines, plans, progress, work logs, and timelines
-- Desktop/mobile widget preview
-- Dedicated mobile dashboard preview
-- Tauri desktop app wrapper
-- Local Windows activity collector for foreground app and idle state
-- Real local session persistence under `data/`
+Everything is designed around a local-first rule: raw activity stays on the user's devices, and only approved summaries can be shared with the companion AI agent.
 
 ## Demo
 
-| Hackathon Corner |
-| --- |
-| ![What Do You Do Hackathon Corner](docs/screenshots/hackathon-corner.png) |
+<table>
+  <tr>
+    <td colspan="2">
+      <img src="docs/screenshots/dashboard-light.png" alt="What Do You Do light dashboard" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/dashboard-dark.png" alt="What Do You Do dark dashboard" />
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/dashboard-mobile.png" alt="What Do You Do mobile dashboard" />
+    </td>
+  </tr>
+</table>
 
-The Hackathon Corner is built as a live workspace inside the wellbeing app:
+## Highlights
 
-- four-stage board for Watching, Applied, Building, and Submitted
-- live AiOS source inbox for Gmail and platform updates
-- connector health, unread updates, and manual source scanning
-- local plans, progress, work logs, deadlines, and timeline entries
+- Premium glass dashboard with light and dark mode
+- Live local Windows activity collector for foreground app and idle state
+- Dynamic daily dashboard backed by persisted local session files
+- Activity timeline with top detected contexts and deeper logs
+- Local correction flow for better labels over time
+- Project AI Agent / AiOS bridge for approved wellbeing summaries
+- Hackathon Corner for timelines, applied dates, deadlines, plans, work logs, and source inbox updates
+- Desktop and mobile widget previews
+- Tauri desktop app wrapper
+- Privacy controls that make the data boundary visible
 
-## Commands
+## Local Architecture
+
+```text
+Windows desktop signals
+        |
+        v
+Local activity collector
+        |
+        v
+data/*.json session store  --->  React dashboard
+        |                              |
+        |                              v
+        |                       corrections, notes,
+        |                       widgets, hackathons
+        v
+optional approved summaries
+        |
+        v
+Project AI Agent / AiOS
+```
+
+The dashboard can run without AiOS. When AiOS is installed and unlocked locally, `What Do You Do` can sync high-level summaries to the agent through the local API.
+
+## Quick Start
 
 ```powershell
 npm install
 npm run dev
+```
+
+Run the local collector in a second terminal:
+
+```powershell
 npm run collector:dev
+```
+
+Build the web app:
+
+```powershell
 npm run build
+```
+
+Run the desktop wrapper:
+
+```powershell
 npm run desktop:dev
 npm run desktop:build
 ```
 
-The desktop commands require Rust/Cargo and Visual Studio Build Tools to be installed on the machine. See [desktop build notes](projects/desktop-build-notes.md).
+The desktop commands require Rust/Cargo and Visual Studio Build Tools. See [desktop build notes](projects/desktop-build-notes.md).
 
 ## AiOS Assistant Bridge
 
-`What Do You Do` can run standalone, but the dashboard now connects to the local AiOS Assistant at `http://127.0.0.1:5000`.
+`What Do You Do` connects to the local AiOS Assistant at `http://127.0.0.1:5000`.
 
 Workflow:
 
@@ -61,7 +103,7 @@ Bridge controls:
 
 - `AiOS API`: editable local backend URL, stored in browser local storage.
 - `Pending sync`: count of local sessions not yet sent to AiOS.
-- `Auto-sync approved summaries`: opt-in background sync from the browser while the dashboard is open.
+- `Auto-sync approved summaries`: opt-in background sync while the dashboard is open.
 - `Reset sent list`: clears the local duplicate guard so current sessions can be sent again.
 
 Optional background sync from the collector:
@@ -75,13 +117,15 @@ npm run collector:dev
 
 When enabled, the collector syncs closed sessions in the background and stores duplicate protection in `data/aios-sync-state.json`.
 
-The bridge sends only:
+## Privacy Boundary
+
+The bridge sends only approved summary fields:
 
 - app name
 - broad category
 - sub-activity label
-- start/end time label
-- duration minutes
+- start and end time label
+- duration in minutes
 
 It does not send screenshots, keystrokes, raw window titles, private messages, browser history, files, or full notes.
 
@@ -89,18 +133,16 @@ It does not send screenshots, keystrokes, raw window titles, private messages, b
 
 The Hackathon Corner combines:
 
-- a local four-stage board: Watching, Applied, Building, Submitted
+- a four-stage local board: Watching, Applied, Building, Submitted
 - manual plans, progress, work logs, deadlines, and timeline entries
 - a live AiOS source inbox for Gmail and platform updates
 - unread update controls
 - connector health and manual `Scan now`
 - one-click addition of discovered hackathons to the local build board
 
-The source inbox polls `GET http://127.0.0.1:5000/api/hackathons` every 30 seconds. AiOS performs the actual Gmail/platform monitoring, keeping credentials and source processing out of the wellbeing UI.
+The source inbox polls `GET http://127.0.0.1:5000/api/hackathons` every 30 seconds. AiOS performs the Gmail/platform monitoring, keeping credentials and source processing out of the wellbeing UI.
 
-Start the monitor from AiOS `/workers` after configuring Gmail OAuth or `imports/hackathons`.
-
-Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates. Data stays local in `data/hackathons.json`.
+Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates in `data/hackathons.json`.
 
 Local API:
 
