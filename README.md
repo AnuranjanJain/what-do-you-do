@@ -18,6 +18,19 @@ Initial build for a privacy-first digital wellbeing app that understands what th
 - Local Windows activity collector for foreground app and idle state
 - Real local session persistence under `data/`
 
+## Demo
+
+| Hackathon Corner |
+| --- |
+| ![What Do You Do Hackathon Corner](docs/screenshots/hackathon-corner.png) |
+
+The Hackathon Corner is built as a live workspace inside the wellbeing app:
+
+- four-stage board for Watching, Applied, Building, and Submitted
+- live AiOS source inbox for Gmail and platform updates
+- connector health, unread updates, and manual source scanning
+- local plans, progress, work logs, deadlines, and timeline entries
+
 ## Commands
 
 ```powershell

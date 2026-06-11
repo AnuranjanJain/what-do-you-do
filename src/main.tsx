@@ -15,10 +15,10 @@ import {
   Gamepad2,
   Gauge,
   LayoutDashboard,
-  LockKeyhole,
   Mail,
   MessageCircle,
   MonitorSmartphone,
+  Moon,
   Pause,
   PieChart,
   Plus,
@@ -27,6 +27,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Sun,
   Trash2,
   TimerReset,
   Trophy,
@@ -128,6 +129,9 @@ const hackathonColumns: { status: HackathonStatus; label: string }[] = [
 ];
 
 function App() {
+  const [theme, setTheme] = useState<"light" | "dark">(
+    () => (window.localStorage.getItem("wdyd.theme") as "light" | "dark" | null) ?? "light",
+  );
   const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>("simulator");
   const [selectedDate, setSelectedDate] = useState(() => todayDateKey());
   const [activeDateKey, setActiveDateKey] = useState(() => todayDateKey());
@@ -191,6 +195,11 @@ function App() {
       window.clearInterval(intervalId);
     };
   }, [selectedDate, trackingPaused]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("wdyd.theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     refreshHackathons();
@@ -449,59 +458,63 @@ function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar glass-panel">
+      <header className="topbar">
         <div className="brand">
           <div className="brand-mark">
             <Gauge size={22} />
           </div>
           <div>
             <strong>What Do You Do</strong>
-            <span>Private activity intelligence</span>
+            <span>Private activity OS</span>
           </div>
         </div>
 
         <nav className="nav-list" aria-label="Primary">
           <a className="active" href="#today">
-            <LayoutDashboard size={18} />
+            <LayoutDashboard size={15} />
             Dashboard
           </a>
           <a href="#timeline">
-            <Activity size={18} />
+            <Activity size={15} />
             Timeline
           </a>
           <a href="#hackathons">
-            <Trophy size={18} />
+            <Trophy size={15} />
             Hackathons
           </a>
           <a href="#privacy">
-            <ShieldCheck size={18} />
+            <ShieldCheck size={15} />
             Privacy
           </a>
           <a href="#agent">
-            <Bot size={18} />
+            <Bot size={15} />
             AI Agent
           </a>
           <a href="#widgets">
-            <MonitorSmartphone size={18} />
+            <MonitorSmartphone size={15} />
             Widgets
-          </a>
-          <a href="#settings">
-            <Settings2 size={18} />
-            Settings
           </a>
         </nav>
 
-        <section className="privacy-lock">
-          <LockKeyhole size={20} />
-          <div>
-            <strong>Local-only mode</strong>
-            <p>Raw activity, screenshots, messages, and mailbox data stay on this device.</p>
-          </div>
-        </section>
-      </aside>
+        <div className="topbar-actions">
+          <a className="topbar-settings" href="#settings">
+            <Settings2 size={16} />
+            <span>Settings</span>
+          </a>
+          <button
+            className="theme-toggle"
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+            onClick={() => setTheme((value) => (value === "light" ? "dark" : "light"))}
+          >
+            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
+          <span className={`collector-dot ${collectorStatus}`} title={`Collector: ${collectorStatus}`} />
+        </div>
+      </header>
 
       <section className="workspace">
-        <header className="hero glass-panel">
+        <header className="hero">
           <div className="hero-copy">
             <p className="eyebrow">
               {collectorStatus === "live"
@@ -510,13 +523,13 @@ function App() {
                   ? "Daily history"
                   : "Simulator fallback"}
             </p>
-            <h1>Today&apos;s activity command center</h1>
+            <h1>Welcome back.</h1>
             <p>
               {collectorStatus === "live"
-                ? "The dashboard is reading live local Windows foreground app and idle signals."
+                ? "Your private activity timeline is live and processing on this device."
                 : collectorStatus === "history"
                   ? `Showing persisted local sessions for ${selectedDate}.`
-                : "Start the local collector to replace simulated sessions with real desktop activity."}
+                  : "Start the local collector to replace simulated sessions with real desktop activity."}
             </p>
           </div>
           <div className="hero-card">
@@ -535,7 +548,7 @@ function App() {
           </div>
         </header>
 
-        <section className="date-strip glass-panel" aria-label="Date controls">
+        <section className="date-strip" aria-label="Date controls">
           <div>
             <span>Viewing date</span>
             <strong>{selectedDate}</strong>
@@ -571,7 +584,7 @@ function App() {
         </section>
 
         <section className="metrics-grid" id="today">
-            <MetricCard
+          <MetricCard
             icon={TimerReset}
             label="Tracked time"
             value={formatMinutes(summary.totalMinutes)}
