@@ -526,24 +526,46 @@ function App() {
             <h1>Welcome back.</h1>
             <p>
               {collectorStatus === "live"
-                ? "Your private activity timeline is live and processing on this device."
+                ? "Your day is classified locally, in real time."
                 : collectorStatus === "history"
                   ? `Showing persisted local sessions for ${selectedDate}.`
-                  : "Start the local collector to replace simulated sessions with real desktop activity."}
+                  : "Start the collector to replace simulated sessions."}
             </p>
+            <div className="hero-progress-strip" aria-label="Daily activity summary">
+              <span className="dark">{formatMinutes(summary.totalMinutes)}</span>
+              <span className="gold">{formatMinutes(summary.focusMinutes)}</span>
+              <span>{formatMinutes(summary.idleMinutes)}</span>
+              <span className="rail" aria-hidden="true" />
+            </div>
           </div>
-          <div className="hero-card">
-            <span>{hasData ? "Current session" : "No data"}</span>
-            <strong>
-              {hasData ? `${currentMeta.label}: ${current.subcategory}` : selectedDate}
-            </strong>
-            <small>
-              {hasData
-                ? `${current.appName} - ${formatMinutes(current.durationMinutes)} focused, ${current.confidence}% confidence`
-                : "No activity sessions were recorded for this day."}
-            </small>
-            <div className="session-meter" aria-hidden="true">
-              <span style={{ width: `${current.confidence}%` }} />
+          <div className="hero-side">
+            <div className="hero-stats" aria-label="Dashboard totals">
+              <div>
+                <strong>{sessions.length}</strong>
+                <span>Sessions</span>
+              </div>
+              <div>
+                <strong>{summary.insights.correctedCount}</strong>
+                <span>Corrections</span>
+              </div>
+              <div>
+                <strong>{summary.privacyScore}</strong>
+                <span>Privacy</span>
+              </div>
+            </div>
+            <div className="hero-card">
+              <span>{hasData ? "Current session" : "No data"}</span>
+              <strong>
+                {hasData ? `${currentMeta.label}: ${current.subcategory}` : selectedDate}
+              </strong>
+              <small>
+                {hasData
+                  ? `${current.appName} - ${formatMinutes(current.durationMinutes)} focused, ${current.confidence}% confidence`
+                  : "No activity sessions were recorded for this day."}
+              </small>
+              <div className="session-meter" aria-hidden="true">
+                <span style={{ width: `${current.confidence}%` }} />
+              </div>
             </div>
           </div>
         </header>
