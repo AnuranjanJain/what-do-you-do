@@ -169,6 +169,7 @@ Current real data:
 - Date-aware dashboard view
 - Manual and opt-in auto-sync into AiOS Assistant wellbeing events
 - Optional token-authenticated collector sync into AiOS Assistant
+- Local hackathon workflow persisted in `data/hackathons.json`
 
 Next real data:
 

@@ -179,6 +179,7 @@ flowchart TD
 | Privacy Control Center | Lets the user pause tracking, inspect collected data, delete data, export data, and disable specific signal sources. |
 | Integration Bridge | Connects to `Project AI Agent` only after install detection and explicit user approval, then syncs high-level sessions to the local AiOS API. |
 | Dashboard | Shows daily timeline, focus patterns, distractions, active/idle split, app categories, and wellbeing insights. |
+| Hackathon Tracker | Stores application dates, deadlines, progress, plans, work logs, and timeline updates in a local JSON file. |
 | Widgets | Shows current activity, reminders, focus status, daily summary, and quick capture shortcuts. |
 
 ### Project AI Agent

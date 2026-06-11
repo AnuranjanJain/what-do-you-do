@@ -11,6 +11,7 @@ const dataDir = join(projectRoot, "data");
 const sessionsDir = join(dataDir, "activity-sessions");
 const legacySessionStorePath = join(dataDir, "activity-sessions.json");
 const aiosSyncStatePath = join(dataDir, "aios-sync-state.json");
+const hackathonsStorePath = join(dataDir, "hackathons.json");
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.WDYD_COLLECTOR_PORT ?? "17321", 10);
 const pollMs = Number.parseInt(process.env.WDYD_COLLECTOR_POLL_MS ?? "2500", 10);
@@ -20,6 +21,7 @@ const aiosBaseUrl = process.env.WDYD_AIOS_URL ?? "http://127.0.0.1:5000";
 const aiosApiToken = process.env.WDYD_AIOS_API_TOKEN ?? "";
 const maxSessions = 96;
 const activityCategories = new Set(["coding", "browsing", "communication", "gaming", "watching", "idle"]);
+const hackathonStatuses = new Set(["watching", "applied", "building", "submitted"]);
 
 let latestSnapshot = null;
 let currentSession = null;
@@ -196,6 +198,152 @@ async function persistDate(dateKey, currentSessionForDate, sessionsForDate) {
     `${JSON.stringify(buildPayload(dateKey, currentSessionForDate, sessionsForDate), null, 2)}\n`,
     "utf-8",
   );
+}
+
+async function readHackathons() {
+  try {
+    const data = JSON.parse(await readFile(hackathonsStorePath, "utf-8"));
+    return Array.isArray(data.hackathons) ? data.hackathons : [];
+  } catch {
+    return [];
+  }
+}
+
+async function persistHackathons(hackathons) {
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(
+    hackathonsStorePath,
+    `${JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), hackathons }, null, 2)}\n`,
+    "utf-8",
+  );
+}
+
+async function saveHackathon(payload) {
+  const sanitized = sanitizeHackathonPayload(payload);
+
+  if (!sanitized.ok) return sanitized;
+
+  const hackathons = await readHackathons();
+  const now = new Date().toISOString();
+  const existingIndex = sanitized.id
+    ? hackathons.findIndex((hackathon) => hackathon.id === sanitized.id)
+    : -1;
+  const existing = existingIndex >= 0 ? hackathons[existingIndex] : null;
+  const hackathon = {
+    ...sanitized.hackathon,
+    id: existing?.id ?? `hackathon-${Date.now()}`,
+    timeline: Array.isArray(payload.timeline)
+      ? payload.timeline.map(sanitizeTimelineEntry).filter(Boolean).slice(-50)
+      : existing?.timeline ?? [],
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  if (existingIndex >= 0) {
+    hackathons[existingIndex] = hackathon;
+  } else {
+    hackathons.unshift(hackathon);
+  }
+
+  await persistHackathons(hackathons);
+  return { ok: true, hackathon };
+}
+
+async function addHackathonTimelineEntry(payload) {
+  const hackathonId = String(payload?.hackathonId ?? "");
+  const note = String(payload?.note ?? "").trim().slice(0, 280);
+
+  if (!hackathonId || !note) {
+    return { ok: false, error: "Hackathon and timeline note are required." };
+  }
+
+  const hackathons = await readHackathons();
+  const index = hackathons.findIndex((hackathon) => hackathon.id === hackathonId);
+
+  if (index < 0) {
+    return { ok: false, error: "Hackathon not found." };
+  }
+
+  const now = new Date().toISOString();
+  const entry = {
+    id: `timeline-${Date.now()}`,
+    date: now,
+    note,
+  };
+  const hackathon = {
+    ...hackathons[index],
+    timeline: [...(hackathons[index].timeline ?? []), entry].slice(-50),
+    updatedAt: now,
+  };
+  hackathons[index] = hackathon;
+  await persistHackathons(hackathons);
+
+  return { ok: true, hackathon };
+}
+
+async function deleteHackathon(payload) {
+  const hackathonId = String(payload?.hackathonId ?? "");
+  const hackathons = await readHackathons();
+  const remaining = hackathons.filter((hackathon) => hackathon.id !== hackathonId);
+
+  if (!hackathonId || remaining.length === hackathons.length) {
+    return { ok: false, error: "Hackathon not found." };
+  }
+
+  await persistHackathons(remaining);
+  return { ok: true };
+}
+
+function sanitizeHackathonPayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, error: "Missing JSON payload." };
+  }
+
+  const title = String(payload.title ?? "").trim().slice(0, 120);
+  const organizer = String(payload.organizer ?? "").trim().slice(0, 120);
+  const url = String(payload.url ?? "").trim().slice(0, 500);
+  const status = String(payload.status ?? "watching");
+  const appliedDate = sanitizeDateValue(payload.appliedDate);
+  const deadline = sanitizeDateValue(payload.deadline);
+  const progress = Math.max(0, Math.min(100, Number(payload.progress) || 0));
+  const plan = String(payload.plan ?? "").trim().slice(0, 2000);
+  const workDone = String(payload.workDone ?? "").trim().slice(0, 2000);
+
+  if (!title) return { ok: false, error: "Hackathon title is required." };
+  if (!hackathonStatuses.has(status)) return { ok: false, error: "Invalid hackathon status." };
+
+  return {
+    ok: true,
+    id: String(payload.id ?? ""),
+    hackathon: {
+      title,
+      organizer,
+      url,
+      status,
+      appliedDate,
+      deadline,
+      progress,
+      plan,
+      workDone,
+    },
+  };
+}
+
+function sanitizeDateValue(value) {
+  const date = String(value ?? "");
+  return !date || isValidDateKey(date) ? date : "";
+}
+
+function sanitizeTimelineEntry(entry) {
+  if (!entry || typeof entry !== "object") return null;
+  const note = String(entry.note ?? "").trim().slice(0, 280);
+  if (!note) return null;
+
+  return {
+    id: String(entry.id ?? `timeline-${Date.now()}`),
+    date: String(entry.date ?? new Date().toISOString()),
+    note,
+  };
 }
 
 function buildPayload(dateKey, currentSessionForDate, sessionsForDate) {
@@ -706,6 +854,53 @@ const server = createServer(async (request, response) => {
       jsonResponse(response, 400, {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to save note",
+      });
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/hackathons" && request.method === "GET") {
+    jsonResponse(response, 200, {
+      ok: true,
+      hackathons: await readHackathons(),
+    });
+    return;
+  }
+
+  if (requestUrl.pathname === "/hackathons/save" && request.method === "POST") {
+    try {
+      const result = await saveHackathon(await readJsonBody(request));
+      jsonResponse(response, result.ok ? 200 : 400, result);
+    } catch (error) {
+      jsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to save hackathon.",
+      });
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/hackathons/timeline" && request.method === "POST") {
+    try {
+      const result = await addHackathonTimelineEntry(await readJsonBody(request));
+      jsonResponse(response, result.ok ? 200 : 404, result);
+    } catch (error) {
+      jsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to add timeline entry.",
+      });
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === "/hackathons/delete" && request.method === "POST") {
+    try {
+      const result = await deleteHackathon(await readJsonBody(request));
+      jsonResponse(response, result.ok ? 200 : 404, result);
+    } catch (error) {
+      jsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to delete hackathon.",
       });
     }
     return;

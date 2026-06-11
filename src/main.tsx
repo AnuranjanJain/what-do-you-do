@@ -5,6 +5,7 @@ import {
   Bell,
   Bot,
   BriefcaseBusiness,
+  CalendarDays,
   Check,
   Clock3,
   Code2,
@@ -19,11 +20,14 @@ import {
   MonitorSmartphone,
   Pause,
   PieChart,
+  Plus,
   StickyNote,
   Search,
   Settings2,
   ShieldCheck,
+  Trash2,
   TimerReset,
+  Trophy,
   Tv,
   Zap,
 } from "lucide-react";
@@ -40,6 +44,12 @@ import {
   todayDateKey,
 } from "./domain/activity";
 import {
+  Hackathon,
+  HackathonDraft,
+  HackathonStatus,
+  emptyHackathonDraft,
+} from "./domain/hackathon";
+import {
   AiosLiveStatus,
   AiosStatus,
   checkAiosConnection,
@@ -50,6 +60,12 @@ import {
   syncActivitySessions,
 } from "./services/aios";
 import { correctLiveSession, fetchLiveSessions, saveSessionNote } from "./services/collector";
+import {
+  addHackathonTimelineEntry,
+  deleteHackathon,
+  fetchHackathons,
+  saveHackathon,
+} from "./services/hackathons";
 import "./styles.css";
 
 const categoryMeta: Record<
@@ -96,6 +112,13 @@ const categoryOptions: ActivityCategory[] = [
   "idle",
 ];
 
+const hackathonColumns: { status: HackathonStatus; label: string }[] = [
+  { status: "watching", label: "Watching" },
+  { status: "applied", label: "Applied" },
+  { status: "building", label: "Building" },
+  { status: "submitted", label: "Submitted" },
+];
+
 function App() {
   const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>("simulator");
   const [selectedDate, setSelectedDate] = useState(() => todayDateKey());
@@ -117,6 +140,10 @@ function App() {
   const [correctionMessage, setCorrectionMessage] = useState("");
   const [noteMode, setNoteMode] = useState(false);
   const [noteMessage, setNoteMessage] = useState("");
+  const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [hackathonMessage, setHackathonMessage] = useState("Loading local hackathon tracker.");
+  const [hackathonFormOpen, setHackathonFormOpen] = useState(false);
+  const [editingHackathon, setEditingHackathon] = useState<Hackathon | null>(null);
   const [sessions, setSessions] = useState<ActivitySession[]>(() => simulateTodayActivity());
 
   useEffect(() => {
@@ -153,6 +180,10 @@ function App() {
       window.clearInterval(intervalId);
     };
   }, [selectedDate, trackingPaused]);
+
+  useEffect(() => {
+    refreshHackathons();
+  }, []);
 
   const summary = useMemo(
     () => buildDashboardSummary(sessions, privacyPermissions),
@@ -194,6 +225,46 @@ function App() {
     setActiveDateKey(result.activeDateKey);
     setAvailableDates(result.availableDates);
     setCollectorStatus(result.isLiveDate ? "live" : "history");
+  }
+
+  async function refreshHackathons() {
+    try {
+      const savedHackathons = await fetchHackathons();
+      setHackathons(savedHackathons);
+      setHackathonMessage(
+        savedHackathons.length > 0
+          ? `${savedHackathons.length} hackathon${savedHackathons.length === 1 ? "" : "s"} tracked locally.`
+          : "No hackathons tracked yet.",
+      );
+    } catch (error) {
+      setHackathonMessage(
+        error instanceof Error ? error.message : "Start the local collector to use hackathon tracking.",
+      );
+    }
+  }
+
+  async function handleSaveHackathon(draft: HackathonDraft) {
+    await saveHackathon({
+      ...draft,
+      id: editingHackathon?.id,
+      timeline: editingHackathon?.timeline,
+    });
+    setEditingHackathon(null);
+    setHackathonFormOpen(false);
+    await refreshHackathons();
+    setHackathonMessage("Hackathon saved locally.");
+  }
+
+  async function handleHackathonTimeline(hackathonId: string, note: string) {
+    await addHackathonTimelineEntry(hackathonId, note);
+    await refreshHackathons();
+    setHackathonMessage("Timeline update saved locally.");
+  }
+
+  async function handleDeleteHackathon(hackathonId: string) {
+    await deleteHackathon(hackathonId);
+    await refreshHackathons();
+    setHackathonMessage("Hackathon removed.");
   }
 
   async function handleCorrection(sessionId: string, category: ActivityCategory, subcategory: string) {
@@ -320,6 +391,10 @@ function App() {
           <a href="#timeline">
             <Activity size={18} />
             Timeline
+          </a>
+          <a href="#hackathons">
+            <Trophy size={18} />
+            Hackathons
           </a>
           <a href="#privacy">
             <ShieldCheck size={18} />
@@ -565,6 +640,47 @@ function App() {
                 <span>Older activity will appear here once the day has more than 15 entries.</span>
               </div>
             )}
+          </section>
+
+          <section className="panel glass-panel hackathon-panel" id="hackathons">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Hackathon tracker</p>
+                <h2>Applications and build plans</h2>
+                <span className="section-note">{hackathonMessage}</span>
+              </div>
+              <button
+                className="text-button primary"
+                onClick={() => {
+                  setEditingHackathon(null);
+                  setHackathonFormOpen((value) => !value);
+                }}
+              >
+                <Plus size={16} />
+                Add hackathon
+              </button>
+            </div>
+
+            {hackathonFormOpen && (
+              <HackathonForm
+                hackathon={editingHackathon}
+                onCancel={() => {
+                  setEditingHackathon(null);
+                  setHackathonFormOpen(false);
+                }}
+                onSave={handleSaveHackathon}
+              />
+            )}
+
+            <HackathonBoard
+              hackathons={hackathons}
+              onDelete={handleDeleteHackathon}
+              onEdit={(hackathon) => {
+                setEditingHackathon(hackathon);
+                setHackathonFormOpen(true);
+              }}
+              onTimeline={handleHackathonTimeline}
+            />
           </section>
 
           <section className="panel glass-panel" id="privacy">
@@ -1036,6 +1152,316 @@ function DailyInsightsPanel({ summary }: { summary: ReturnType<typeof buildDashb
       </div>
     </div>
   );
+}
+
+function HackathonForm({
+  hackathon,
+  onCancel,
+  onSave,
+}: {
+  hackathon: Hackathon | null;
+  onCancel: () => void;
+  onSave: (draft: HackathonDraft) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<HackathonDraft>(() =>
+    hackathon ? toHackathonDraft(hackathon) : emptyHackathonDraft,
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setDraft(hackathon ? toHackathonDraft(hackathon) : emptyHackathonDraft);
+    setError("");
+  }, [hackathon]);
+
+  function updateDraft<Key extends keyof HackathonDraft>(key: Key, value: HackathonDraft[Key]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      await onSave(draft);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Unable to save hackathon.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="hackathon-form" onSubmit={submit}>
+      <div className="hackathon-form-grid">
+        <label>
+          <span>Name</span>
+          <input
+            required
+            value={draft.title}
+            onChange={(event) => updateDraft("title", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Organizer</span>
+          <input
+            value={draft.organizer}
+            onChange={(event) => updateDraft("organizer", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <select
+            value={draft.status}
+            onChange={(event) => updateDraft("status", event.target.value as HackathonStatus)}
+          >
+            {hackathonColumns.map((column) => (
+              <option key={column.status} value={column.status}>
+                {column.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Applied date</span>
+          <input
+            type="date"
+            value={draft.appliedDate}
+            onChange={(event) => updateDraft("appliedDate", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Deadline</span>
+          <input
+            type="date"
+            value={draft.deadline}
+            onChange={(event) => updateDraft("deadline", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Progress: {draft.progress}%</span>
+          <input
+            max="100"
+            min="0"
+            type="range"
+            value={draft.progress}
+            onChange={(event) => updateDraft("progress", Number(event.target.value))}
+          />
+        </label>
+        <label className="wide">
+          <span>Link</span>
+          <input
+            placeholder="https://..."
+            type="url"
+            value={draft.url}
+            onChange={(event) => updateDraft("url", event.target.value)}
+          />
+        </label>
+        <label className="wide">
+          <span>Plan</span>
+          <textarea
+            placeholder="Problem, milestones, teammates, submission plan..."
+            value={draft.plan}
+            onChange={(event) => updateDraft("plan", event.target.value)}
+          />
+        </label>
+        <label className="wide">
+          <span>Work done</span>
+          <textarea
+            placeholder="Research, prototype, backend, pitch deck..."
+            value={draft.workDone}
+            onChange={(event) => updateDraft("workDone", event.target.value)}
+          />
+        </label>
+      </div>
+      {error && <div className="inline-status">{error}</div>}
+      <div className="form-actions">
+        <button className="text-button" type="button" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="text-button primary" disabled={saving || !draft.title.trim()} type="submit">
+          {saving ? "Saving" : hackathon ? "Update" : "Create"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function HackathonBoard({
+  hackathons,
+  onDelete,
+  onEdit,
+  onTimeline,
+}: {
+  hackathons: Hackathon[];
+  onDelete: (hackathonId: string) => Promise<void>;
+  onEdit: (hackathon: Hackathon) => void;
+  onTimeline: (hackathonId: string, note: string) => Promise<void>;
+}) {
+  return (
+    <div className="hackathon-board">
+      {hackathonColumns.map((column) => {
+        const items = hackathons.filter((hackathon) => hackathon.status === column.status);
+
+        return (
+          <section className={`hackathon-column ${column.status}`} key={column.status}>
+            <header>
+              <strong>{column.label}</strong>
+              <span>{items.length}</span>
+            </header>
+            <div className="hackathon-column-list">
+              {items.length > 0 ? (
+                items.map((hackathon) => (
+                  <HackathonCard
+                    hackathon={hackathon}
+                    key={hackathon.id}
+                    onDelete={onDelete}
+                    onEdit={onEdit}
+                    onTimeline={onTimeline}
+                  />
+                ))
+              ) : (
+                <div className="hackathon-column-empty">No entries</div>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function HackathonCard({
+  hackathon,
+  onDelete,
+  onEdit,
+  onTimeline,
+}: {
+  hackathon: Hackathon;
+  onDelete: (hackathonId: string) => Promise<void>;
+  onEdit: (hackathon: Hackathon) => void;
+  onTimeline: (hackathonId: string, note: string) => Promise<void>;
+}) {
+  const [timelineNote, setTimelineNote] = useState("");
+  const [savingTimeline, setSavingTimeline] = useState(false);
+  const deadlineLabel = formatDeadline(hackathon.deadline);
+
+  async function saveTimeline() {
+    if (!timelineNote.trim()) return;
+    setSavingTimeline(true);
+
+    try {
+      await onTimeline(hackathon.id, timelineNote);
+      setTimelineNote("");
+    } finally {
+      setSavingTimeline(false);
+    }
+  }
+
+  return (
+    <article className="hackathon-card">
+      <div className="hackathon-card-heading">
+        <div>
+          <strong>{hackathon.title}</strong>
+          <span>{hackathon.organizer || "Independent team"}</span>
+        </div>
+        <div className="hackathon-card-actions">
+          <button aria-label={`Edit ${hackathon.title}`} onClick={() => onEdit(hackathon)}>
+            <Settings2 size={15} />
+          </button>
+          <button aria-label={`Delete ${hackathon.title}`} onClick={() => onDelete(hackathon.id)}>
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+
+      <div className="hackathon-dates">
+        <span>
+          <CalendarDays size={14} />
+          Applied {hackathon.appliedDate || "not yet"}
+        </span>
+        <strong className={deadlineLabel.tone}>{deadlineLabel.text}</strong>
+      </div>
+
+      <div className="hackathon-progress">
+        <div>
+          <span>Progress</span>
+          <strong>{hackathon.progress}%</strong>
+        </div>
+        <div aria-hidden="true">
+          <span style={{ width: `${hackathon.progress}%` }} />
+        </div>
+      </div>
+
+      <div className="hackathon-copy">
+        <span>Plan</span>
+        <p>{hackathon.plan || "No plan written yet."}</p>
+      </div>
+      <div className="hackathon-copy">
+        <span>Work done</span>
+        <p>{hackathon.workDone || "No work logged yet."}</p>
+      </div>
+
+      {hackathon.url && (
+        <a className="hackathon-link" href={hackathon.url} target="_blank" rel="noreferrer">
+          Open hackathon page
+        </a>
+      )}
+
+      <div className="hackathon-timeline">
+        <span>Timeline</span>
+        {hackathon.timeline.slice(-3).reverse().map((entry) => (
+          <div key={entry.id}>
+            <time>{formatTimelineDate(entry.date)}</time>
+            <p>{entry.note}</p>
+          </div>
+        ))}
+        <div className="timeline-entry-form">
+          <input
+            maxLength={280}
+            placeholder="Add progress update"
+            value={timelineNote}
+            onChange={(event) => setTimelineNote(event.target.value)}
+          />
+          <button disabled={savingTimeline || !timelineNote.trim()} onClick={saveTimeline}>
+            <Plus size={15} />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function toHackathonDraft(hackathon: Hackathon): HackathonDraft {
+  return {
+    title: hackathon.title,
+    organizer: hackathon.organizer,
+    url: hackathon.url,
+    status: hackathon.status,
+    appliedDate: hackathon.appliedDate,
+    deadline: hackathon.deadline,
+    progress: hackathon.progress,
+    plan: hackathon.plan,
+    workDone: hackathon.workDone,
+  };
+}
+
+function formatDeadline(deadline: string): { text: string; tone: string } {
+  if (!deadline) return { text: "No deadline", tone: "muted" };
+  const days = Math.ceil((new Date(`${deadline}T23:59:59`).getTime() - Date.now()) / 86400000);
+
+  if (days < 0) return { text: `${Math.abs(days)}d overdue`, tone: "danger" };
+  if (days === 0) return { text: "Due today", tone: "danger" };
+  if (days <= 7) return { text: `${days}d left`, tone: "warning" };
+  return { text: `${days}d left`, tone: "good" };
+}
+
+function formatTimelineDate(date: string): string {
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime())
+    ? date
+    : parsed.toLocaleDateString([], { day: "2-digit", month: "short" });
 }
 
 function PermissionRow({ permission }: { permission: PrivacyPermission }) {

@@ -11,6 +11,7 @@ Initial build for a privacy-first digital wellbeing app that understands what th
 - Privacy controls surface
 - Project AI Agent integration gate
 - Live AiOS Assistant bridge for local wellbeing activity sync
+- Local hackathon tracker with application dates, deadlines, plans, progress, work logs, and timelines
 - Desktop/mobile widget preview
 - Dedicated mobile dashboard preview
 - Tauri desktop app wrapper
@@ -70,6 +71,26 @@ The bridge sends only:
 - duration minutes
 
 It does not send screenshots, keystrokes, raw window titles, private messages, browser history, files, or full notes.
+
+## Hackathon Tracker
+
+The dashboard includes a four-column hackathon workflow:
+
+- Watching
+- Applied
+- Building
+- Submitted
+
+Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates. Data stays local in `data/hackathons.json`.
+
+Local API:
+
+```text
+GET  /hackathons
+POST /hackathons/save
+POST /hackathons/timeline
+POST /hackathons/delete
+```
 
 ## Project Docs
 

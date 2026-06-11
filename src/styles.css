@@ -411,6 +411,314 @@ h2 {
   grid-row: span 2;
 }
 
+.hackathon-panel {
+  grid-column: 1 / -1;
+}
+
+.hackathon-form {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(5, 2, 18, 0.26);
+}
+
+.hackathon-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hackathon-form label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.hackathon-form label.wide {
+  grid-column: 1 / -1;
+}
+
+.hackathon-form label > span,
+.hackathon-timeline > span,
+.hackathon-copy > span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hackathon-form input,
+.hackathon-form select,
+.hackathon-form textarea,
+.timeline-entry-form input {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(5, 2, 18, 0.36);
+  padding: 10px;
+  font: inherit;
+}
+
+.hackathon-form input,
+.hackathon-form select {
+  min-height: 40px;
+}
+
+.hackathon-form textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.hackathon-form input[type="range"] {
+  padding: 0;
+  accent-color: #a855f7;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hackathon-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.hackathon-column {
+  min-width: 220px;
+}
+
+.hackathon-column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0 10px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.14);
+}
+
+.hackathon-column.watching > header {
+  border-color: #22d3ee;
+}
+
+.hackathon-column.applied > header {
+  border-color: #a855f7;
+}
+
+.hackathon-column.building > header {
+  border-color: #fbbf24;
+}
+
+.hackathon-column.submitted > header {
+  border-color: #34d399;
+}
+
+.hackathon-column > header span {
+  min-width: 24px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.hackathon-column-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.hackathon-column-empty {
+  min-height: 80px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 12px;
+}
+
+.hackathon-card {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hackathon-card-heading,
+.hackathon-card-actions,
+.hackathon-dates,
+.hackathon-progress > div:first-child {
+  display: flex;
+  align-items: center;
+}
+
+.hackathon-card-heading {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hackathon-card-heading strong,
+.hackathon-card-heading span {
+  display: block;
+}
+
+.hackathon-card-heading strong {
+  overflow-wrap: anywhere;
+}
+
+.hackathon-card-heading span {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+
+.hackathon-card-actions {
+  gap: 4px;
+}
+
+.hackathon-card-actions button,
+.timeline-entry-form button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hackathon-dates {
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.hackathon-dates span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.hackathon-dates strong.good {
+  color: #86efac;
+}
+
+.hackathon-dates strong.warning {
+  color: #fde68a;
+}
+
+.hackathon-dates strong.danger {
+  color: #fda4af;
+}
+
+.hackathon-dates strong.muted {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.hackathon-progress {
+  display: grid;
+  gap: 7px;
+}
+
+.hackathon-progress > div:first-child {
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+}
+
+.hackathon-progress > div:last-child {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hackathon-progress > div:last-child span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #a855f7, #34d399);
+}
+
+.hackathon-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.hackathon-copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.hackathon-link {
+  color: #9ee7ff;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.hackathon-timeline {
+  display: grid;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hackathon-timeline > div:not(.timeline-entry-form) {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.hackathon-timeline time {
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 10px;
+}
+
+.hackathon-timeline p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.timeline-entry-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.timeline-entry-form input {
+  min-height: 34px;
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.timeline-entry-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .insights-panel {
   grid-row: span 2;
 }
@@ -1492,7 +1800,8 @@ h2 {
   .metrics-grid,
   .dashboard-grid,
   .date-strip,
-  .settings-list {
+  .settings-list,
+  .hackathon-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1538,6 +1847,7 @@ h2 {
   .insight-summary-grid,
   .agent-sync-grid,
   .agent-bridge-controls,
+  .hackathon-form-grid,
   .top-app-row {
     grid-template-columns: 1fr;
   }
