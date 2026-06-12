@@ -36,3 +36,5 @@ Application-level encryption is planned before handling highly sensitive notes o
 ## Reporting
 
 Do not include private activity data, tokens, local file paths, or screenshots in public security reports. Report the minimum reproduction needed and redact personal information.
+
+The latest completed review is documented in [Security Audit - June 12, 2026](projects/security-audit-2026-06-12.md).
