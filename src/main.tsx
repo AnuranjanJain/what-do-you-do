@@ -508,11 +508,19 @@ function App() {
   }
 
   function handleAgentBaseUrlChange(value: string) {
-    const normalized = setAiosBaseUrl(value);
-    setAgentBaseUrlState(normalized);
-    setAgentLive(null);
-    setAgentStatus("not-installed");
-    setAgentMessage(`AiOS API set to ${normalized}. Press Connect to verify it.`);
+    try {
+      const normalized = setAiosBaseUrl(value);
+      setAgentBaseUrlState(normalized);
+      setAgentLive(null);
+      setAgentStatus("not-installed");
+      setAgentMessage(`AiOS API set to ${normalized}. Press Connect to verify it.`);
+    } catch (error) {
+      const fallback = getAiosBaseUrl();
+      setAgentBaseUrlState(fallback);
+      setAgentLive(null);
+      setAgentStatus("not-installed");
+      setAgentMessage(error instanceof Error ? error.message : "AiOS API must stay on this device.");
+    }
   }
 
   function resetAiosSyncHistory() {
@@ -1844,6 +1852,7 @@ function HackathonCard({
   const [timelineNote, setTimelineNote] = useState("");
   const [savingTimeline, setSavingTimeline] = useState(false);
   const deadlineLabel = formatDeadline(hackathon.deadline);
+  const externalUrl = safeExternalUrl(hackathon.url);
 
   async function saveTimeline() {
     if (!timelineNote.trim()) return;
@@ -1901,8 +1910,8 @@ function HackathonCard({
         <p>{hackathon.workDone || "No work logged yet."}</p>
       </div>
 
-      {hackathon.url && (
-        <a className="hackathon-link" href={hackathon.url} target="_blank" rel="noreferrer">
+      {externalUrl && (
+        <a className="hackathon-link" href={externalUrl} target="_blank" rel="noreferrer">
           Open hackathon page
         </a>
       )}
@@ -2203,6 +2212,15 @@ function LogRow({ item }: { item: ActivitySession }) {
       )}
     </article>
   );
+}
+
+function safeExternalUrl(value: string): string {
+  try {
+    const parsed = new URL(value);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

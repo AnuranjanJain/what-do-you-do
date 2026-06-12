@@ -25,7 +25,18 @@ export type AiosSyncResult = {
 };
 
 export function getAiosBaseUrl(): string {
-  return window.localStorage.getItem(aiosBaseUrlStorageKey) || defaultAiosBaseUrl;
+  const saved = window.localStorage.getItem(aiosBaseUrlStorageKey);
+
+  if (!saved) {
+    return defaultAiosBaseUrl;
+  }
+
+  try {
+    return normalizeBaseUrl(saved);
+  } catch {
+    window.localStorage.removeItem(aiosBaseUrlStorageKey);
+    return defaultAiosBaseUrl;
+  }
 }
 
 export function setAiosBaseUrl(baseUrl: string): string {
@@ -162,9 +173,20 @@ function normalizeBaseUrl(baseUrl: string): string {
     return defaultAiosBaseUrl;
   }
 
-  if (!/^https?:\/\//i.test(trimmed)) {
-    return `http://${trimmed}`;
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  const parsed = new URL(candidate);
+  const isLoopback = parsed.hostname === "127.0.0.1"
+    || parsed.hostname === "localhost"
+    || parsed.hostname === "::1"
+    || parsed.hostname === "[::1]";
+
+  if (!isLoopback || !["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("AiOS API must use localhost or a loopback address.");
   }
 
-  return trimmed;
+  parsed.username = "";
+  parsed.password = "";
+  parsed.hash = "";
+  parsed.search = "";
+  return parsed.toString().replace(/\/+$/, "");
 }

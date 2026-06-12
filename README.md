@@ -129,6 +129,8 @@ The bridge sends only approved summary fields:
 
 It does not send screenshots, keystrokes, raw window titles, private messages, browser history, files, or full notes.
 
+See [Security](SECURITY.md) for the local threat model, implemented controls, and current data-at-rest limitation.
+
 ## Hackathon Corner
 
 The Hackathon Corner combines:

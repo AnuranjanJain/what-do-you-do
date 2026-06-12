@@ -7,7 +7,9 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "../..");
 const snapshotScript = join(__dirname, "get-windows-activity.ps1");
-const dataDir = join(projectRoot, "data");
+const dataDir = process.env.WDYD_DATA_DIR
+  ? resolve(process.env.WDYD_DATA_DIR)
+  : join(projectRoot, "data");
 const sessionsDir = join(dataDir, "activity-sessions");
 const legacySessionStorePath = join(dataDir, "activity-sessions.json");
 const aiosSyncStatePath = join(dataDir, "aios-sync-state.json");
@@ -17,11 +19,17 @@ const port = Number.parseInt(process.env.WDYD_COLLECTOR_PORT ?? "17321", 10);
 const pollMs = Number.parseInt(process.env.WDYD_COLLECTOR_POLL_MS ?? "2500", 10);
 const idleThresholdMs = Number.parseInt(process.env.WDYD_IDLE_THRESHOLD_MS ?? "60000", 10);
 const aiosSyncEnabled = process.env.WDYD_AIOS_SYNC === "1";
-const aiosBaseUrl = process.env.WDYD_AIOS_URL ?? "http://127.0.0.1:5000";
+const aiosBaseUrl = normalizeLoopbackBaseUrl(process.env.WDYD_AIOS_URL ?? "http://127.0.0.1:5000");
 const aiosApiToken = process.env.WDYD_AIOS_API_TOKEN ?? "";
 const maxSessions = 96;
+const maxJsonBodyBytes = 64 * 1024;
 const activityCategories = new Set(["coding", "browsing", "communication", "gaming", "watching", "idle"]);
 const hackathonStatuses = new Set(["watching", "applied", "building", "submitted"]);
+const allowedBrowserOrigins = [
+  /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/i,
+  /^https?:\/\/tauri\.localhost$/i,
+  /^tauri:\/\/localhost$/i,
+];
 
 let latestSnapshot = null;
 let currentSession = null;
@@ -301,7 +309,7 @@ function sanitizeHackathonPayload(payload) {
 
   const title = String(payload.title ?? "").trim().slice(0, 120);
   const organizer = String(payload.organizer ?? "").trim().slice(0, 120);
-  const url = String(payload.url ?? "").trim().slice(0, 500);
+  const url = sanitizeExternalUrl(payload.url);
   const status = String(payload.status ?? "watching");
   const appliedDate = sanitizeDateValue(payload.appliedDate);
   const deadline = sanitizeDateValue(payload.deadline);
@@ -713,9 +721,24 @@ function sanitizeNotePayload(payload) {
 }
 
 async function readJsonBody(request) {
+  const contentType = String(request.headers["content-type"] ?? "").toLowerCase();
+  if (!contentType.startsWith("application/json")) {
+    throw createHttpError(415, "Content-Type must be application/json.");
+  }
+
+  const declaredLength = Number.parseInt(String(request.headers["content-length"] ?? "0"), 10);
+  if (Number.isFinite(declaredLength) && declaredLength > maxJsonBodyBytes) {
+    throw createHttpError(413, "Request body is too large.");
+  }
+
   const chunks = [];
+  let totalBytes = 0;
 
   for await (const chunk of request) {
+    totalBytes += chunk.length;
+    if (totalBytes > maxJsonBodyBytes) {
+      throw createHttpError(413, "Request body is too large.");
+    }
     chunks.push(chunk);
   }
 
@@ -738,16 +761,29 @@ async function listAvailableDates() {
 
 function jsonResponse(response, statusCode, body) {
   response.writeHead(statusCode, {
-    "Access-Control-Allow-Origin": "http://127.0.0.1:5173",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
   });
   response.end(JSON.stringify(body));
 }
 
 const server = createServer(async (request, response) => {
+  const requestOrigin = String(request.headers.origin ?? "");
+  const allowedOrigin = getAllowedBrowserOrigin(requestOrigin);
+
+  if (requestOrigin && !allowedOrigin) {
+    jsonResponse(response, 403, { ok: false, error: "Origin is not allowed." });
+    return;
+  }
+
+  if (allowedOrigin) {
+    response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+    response.setHeader("Vary", "Origin");
+  }
+
   if (request.method === "OPTIONS") {
     jsonResponse(response, 204, {});
     return;
@@ -762,7 +798,7 @@ const server = createServer(async (request, response) => {
       activeDateKey,
       latestCapturedAt: latestSnapshot?.capturedAt ?? null,
       persistenceReady,
-      sessionsDir,
+      storage: "local-daily-json",
       lastError,
       aiosSync: {
         enabled: aiosSyncEnabled,
@@ -777,7 +813,7 @@ const server = createServer(async (request, response) => {
   if (requestUrl.pathname === "/activity") {
     jsonResponse(response, latestSnapshot ? 200 : 503, {
       ok: Boolean(latestSnapshot),
-      snapshot: latestSnapshot,
+      snapshot: latestSnapshot ? toPublicSnapshot(latestSnapshot) : null,
       currentSession,
       activeDateKey,
       lastError,
@@ -831,7 +867,7 @@ const server = createServer(async (request, response) => {
       const result = await correctSession(payload.date, payload.sessionId, payload.patch);
       jsonResponse(response, result.ok ? 200 : 404, result);
     } catch (error) {
-      jsonResponse(response, 400, {
+      jsonResponse(response, getHttpStatus(error), {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to apply correction",
       });
@@ -851,7 +887,7 @@ const server = createServer(async (request, response) => {
       const result = await noteSession(payload.date, payload.sessionId, payload.patch);
       jsonResponse(response, result.ok ? 200 : 404, result);
     } catch (error) {
-      jsonResponse(response, 400, {
+      jsonResponse(response, getHttpStatus(error), {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to save note",
       });
@@ -872,7 +908,7 @@ const server = createServer(async (request, response) => {
       const result = await saveHackathon(await readJsonBody(request));
       jsonResponse(response, result.ok ? 200 : 400, result);
     } catch (error) {
-      jsonResponse(response, 400, {
+      jsonResponse(response, getHttpStatus(error), {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to save hackathon.",
       });
@@ -885,7 +921,7 @@ const server = createServer(async (request, response) => {
       const result = await addHackathonTimelineEntry(await readJsonBody(request));
       jsonResponse(response, result.ok ? 200 : 404, result);
     } catch (error) {
-      jsonResponse(response, 400, {
+      jsonResponse(response, getHttpStatus(error), {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to add timeline entry.",
       });
@@ -898,7 +934,7 @@ const server = createServer(async (request, response) => {
       const result = await deleteHackathon(await readJsonBody(request));
       jsonResponse(response, result.ok ? 200 : 404, result);
     } catch (error) {
-      jsonResponse(response, 400, {
+      jsonResponse(response, getHttpStatus(error), {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to delete hackathon.",
       });
@@ -909,6 +945,10 @@ const server = createServer(async (request, response) => {
   jsonResponse(response, 404, { ok: false, error: "Not found" });
 });
 
+server.requestTimeout = 10_000;
+server.headersTimeout = 12_000;
+server.maxHeadersCount = 64;
+
 server.listen(port, host, () => {
   console.log(`What Do You Do collector listening on http://${host}:${port}`);
   console.log("Collecting active app, window title summary, and idle state locally.");
@@ -918,3 +958,59 @@ server.listen(port, host, () => {
 await bootstrapStorage();
 runPowerShellSnapshot();
 setInterval(runPowerShellSnapshot, pollMs);
+
+function getAllowedBrowserOrigin(origin) {
+  if (!origin) return "";
+  return allowedBrowserOrigins.some((pattern) => pattern.test(origin)) ? origin : "";
+}
+
+function normalizeLoopbackBaseUrl(value) {
+  const candidate = /^https?:\/\//i.test(value) ? value : `http://${value}`;
+  const parsed = new URL(candidate);
+  const isLoopback = parsed.hostname === "127.0.0.1"
+    || parsed.hostname === "localhost"
+    || parsed.hostname === "::1"
+    || parsed.hostname === "[::1]";
+
+  if (!isLoopback || !["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("WDYD_AIOS_URL must use localhost or a loopback address.");
+  }
+
+  parsed.username = "";
+  parsed.password = "";
+  parsed.hash = "";
+  parsed.search = "";
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+function sanitizeExternalUrl(value) {
+  const raw = String(value ?? "").trim().slice(0, 500);
+  if (!raw) return "";
+
+  try {
+    const parsed = new URL(raw);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function toPublicSnapshot(snapshot) {
+  return {
+    capturedAt: snapshot.capturedAt,
+    idleMs: snapshot.idleMs,
+    platform: snapshot.platform,
+    processName: snapshot.processName,
+    rawContentStored: false,
+  };
+}
+
+function createHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function getHttpStatus(error) {
+  return Number.isInteger(error?.statusCode) ? error.statusCode : 400;
+}
