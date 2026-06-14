@@ -24,7 +24,7 @@ Everything is designed around a local-first rule: raw activity stays on the user
 
 ## Highlights
 
-- Premium glass dashboard with light and dark mode
+- Native-rendered Flutter dashboard with light and dark mode
 - Live local Windows activity collector for foreground app and idle state
 - Dynamic daily dashboard backed by persisted local session files
 - Activity timeline with top detected contexts and deeper logs
@@ -32,8 +32,8 @@ Everything is designed around a local-first rule: raw activity stays on the user
 - Project AI Agent / AiOS bridge for approved wellbeing summaries
 - Hackathon Corner for timelines, applied dates, deadlines, plans, work logs, and source inbox updates
 - Desktop and mobile widget previews
-- Tauri desktop app wrapper
-- Native desktop runtime controls for starting and stopping the local collector
+- Flutter clients for Windows, Android, and iOS
+- Legacy Tauri client retained temporarily as a migration reference
 - Privacy controls that make the data boundary visible
 
 ## Local Architecture
@@ -45,7 +45,7 @@ Windows desktop signals
 Local activity collector
         |
         v
-data/*.json session store  --->  React dashboard
+data/*.json session store  --->  Flutter dashboard
         |                              |
         |                              v
         |                       corrections, notes,
@@ -78,14 +78,17 @@ Build the web app:
 npm run build
 ```
 
-Run the desktop wrapper:
+Run the native Flutter desktop client:
 
 ```powershell
-npm run desktop:dev
-npm run desktop:build
+cd flutter_app
+C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
+C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
 ```
 
-The desktop commands require Rust/Cargo and Visual Studio Build Tools. See [desktop build notes](projects/desktop-build-notes.md).
+See [Flutter migration](projects/flutter-migration.md) for architecture,
+platform targets, build output, and remaining migration work. The previous
+Tauri client is still available during feature-parity work.
 
 ## AiOS Assistant Bridge
 
@@ -162,3 +165,4 @@ POST /hackathons/delete
 - [Architecture](projects/architecture.md)
 - [Local collector notes](projects/local-collector-notes.md)
 - [Real data pipeline](projects/real-data-pipeline.md)
+- [Flutter migration](projects/flutter-migration.md)
