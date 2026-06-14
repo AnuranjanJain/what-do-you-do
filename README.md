@@ -33,6 +33,7 @@ Everything is designed around a local-first rule: raw activity stays on the user
 - Hackathon Corner for timelines, applied dates, deadlines, plans, work logs, and source inbox updates
 - Desktop and mobile widget previews
 - Tauri desktop app wrapper
+- Native desktop runtime controls for starting and stopping the local collector
 - Privacy controls that make the data boundary visible
 
 ## Local Architecture

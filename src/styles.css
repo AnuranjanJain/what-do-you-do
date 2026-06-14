@@ -4204,6 +4204,71 @@ body {
   color: rgba(247, 244, 235, 0.56);
 }
 
+.desktop-runtime {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.28)),
+    var(--surface-soft);
+}
+
+.desktop-runtime.native {
+  background:
+    radial-gradient(circle at 94% 0%, rgba(255, 216, 77, 0.35), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.66), rgba(255, 246, 190, 0.4));
+}
+
+:root[data-theme="dark"] .desktop-runtime,
+:root[data-theme="dark"] .desktop-runtime.native {
+  background:
+    radial-gradient(circle at 94% 0%, rgba(255, 216, 77, 0.12), transparent 30%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.desktop-runtime > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.desktop-runtime span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.desktop-runtime strong {
+  color: var(--ink);
+  font-size: 17px;
+}
+
+.desktop-runtime small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.desktop-runtime code {
+  max-width: 100%;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 72%, var(--accent));
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-runtime-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
 @media (max-width: 760px) {
   .focus-graph {
     gap: 8px;
@@ -4230,5 +4295,18 @@ body {
   .split-panel .panel-copy,
   .split-panel .mix-row small:last-child {
     color: rgba(247, 244, 235, 0.62);
+  }
+
+  .desktop-runtime {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .desktop-runtime-actions {
+    width: 100%;
+  }
+
+  .desktop-runtime-actions button {
+    flex: 1 1 0;
   }
 }

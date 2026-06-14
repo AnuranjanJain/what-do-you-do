@@ -67,6 +67,13 @@ import {
 } from "./services/aios";
 import { correctLiveSession, fetchLiveSessions, saveSessionNote } from "./services/collector";
 import {
+  DesktopRuntimeStatus,
+  ensureDesktopCollector,
+  getDesktopRuntimeStatus,
+  isDesktopApp,
+  stopDesktopCollector,
+} from "./services/desktop";
+import {
   addHackathonTimelineEntry,
   deleteHackathon,
   fetchAiosHackathons,
@@ -153,6 +160,8 @@ function App() {
   const [widgetMode, setWidgetMode] = useState<"desktop" | "mobile">("desktop");
   const [privacyExpanded, setPrivacyExpanded] = useState(false);
   const [trackingPaused, setTrackingPaused] = useState(false);
+  const [desktopRuntime, setDesktopRuntime] = useState<DesktopRuntimeStatus | null>(null);
+  const [desktopRuntimeBusy, setDesktopRuntimeBusy] = useState(false);
   const [correctionMode, setCorrectionMode] = useState(false);
   const [correctionMessage, setCorrectionMessage] = useState("");
   const [noteMode, setNoteMode] = useState(false);
@@ -210,6 +219,46 @@ function App() {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem("wdyd.theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function initializeDesktopRuntime() {
+      try {
+        const status = isDesktopApp()
+          ? await ensureDesktopCollector()
+          : await getDesktopRuntimeStatus();
+        if (!cancelled) setDesktopRuntime(status);
+      } catch (error) {
+        if (!cancelled) {
+          setDesktopRuntime({
+            collectorManaged: false,
+            collectorPid: null,
+            collectorRunning: false,
+            collectorUrl: "http://127.0.0.1:17321",
+            desktop: isDesktopApp(),
+            message: error instanceof Error ? error.message : "Unable to initialize desktop runtime.",
+            storagePath: null,
+          });
+        }
+      }
+    }
+
+    initializeDesktopRuntime();
+    const refreshTimer = window.setInterval(async () => {
+      try {
+        const status = await getDesktopRuntimeStatus();
+        if (!cancelled) setDesktopRuntime(status);
+      } catch {
+        // Keep the last known native status while the desktop runtime recovers.
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
 
   useEffect(() => {
     refreshHackathons();
@@ -527,6 +576,33 @@ function App() {
     clearAiosSyncHistory();
     setAgentPendingCount(countPendingAiosSessions(sessions));
     setAgentMessage("AiOS sync history cleared. Current sessions can be sent again.");
+  }
+
+  async function handleDesktopCollector(action: "start" | "stop") {
+    setDesktopRuntimeBusy(true);
+
+    try {
+      const status = action === "start"
+        ? await ensureDesktopCollector()
+        : await stopDesktopCollector();
+      setDesktopRuntime(status);
+
+      if (action === "start") {
+        window.setTimeout(() => refreshSelectedDate(), 900);
+      }
+    } catch (error) {
+      setDesktopRuntime((current) => ({
+        collectorManaged: false,
+        collectorPid: null,
+        collectorRunning: false,
+        collectorUrl: "http://127.0.0.1:17321",
+        desktop: isDesktopApp(),
+        message: error instanceof Error ? error.message : "Unable to control the desktop collector.",
+        storagePath: current?.storagePath ?? null,
+      }));
+    } finally {
+      setDesktopRuntimeBusy(false);
+    }
   }
 
   return (
@@ -1123,7 +1199,42 @@ function App() {
                 {trackingPaused ? "Resume" : "Pause"}
               </button>
             </div>
+            <div className={`desktop-runtime ${desktopRuntime?.desktop ? "native" : "browser"}`}>
+              <div>
+                <span>{desktopRuntime?.desktop ? "Desktop runtime" : "Browser runtime"}</span>
+                <strong>
+                  {desktopRuntime?.collectorRunning
+                    ? desktopRuntime.collectorManaged
+                      ? "Collector managed"
+                      : "Collector detected"
+                    : "Collector stopped"}
+                </strong>
+                <small>{desktopRuntime?.message ?? "Checking runtime..."}</small>
+                {desktopRuntime?.storagePath && <code>{desktopRuntime.storagePath}</code>}
+              </div>
+              <div className="desktop-runtime-actions">
+                <button
+                  className="text-button primary"
+                  disabled={!desktopRuntime?.desktop || desktopRuntimeBusy || desktopRuntime?.collectorRunning}
+                  onClick={() => handleDesktopCollector("start")}
+                >
+                  {desktopRuntimeBusy ? "Working" : "Start collector"}
+                </button>
+                <button
+                  className="text-button"
+                  disabled={
+                    !desktopRuntime?.desktop
+                    || desktopRuntimeBusy
+                    || !desktopRuntime?.collectorManaged
+                  }
+                  onClick={() => handleDesktopCollector("stop")}
+                >
+                  Stop
+                </button>
+              </div>
+            </div>
             <div className="settings-list">
+              <SettingRow label="Runtime" value={desktopRuntime?.desktop ? "Tauri desktop" : "Web browser"} />
               <SettingRow
                 label="Data mode"
                 value={
@@ -1137,6 +1248,16 @@ function App() {
               <SettingRow label="Selected date" value={selectedDate} />
               <SettingRow label="Active date" value={activeDateKey} />
               <SettingRow label="Collector API" value="127.0.0.1:17321" />
+              <SettingRow
+                label="Collector process"
+                value={
+                  desktopRuntime?.collectorManaged
+                    ? `Managed${desktopRuntime.collectorPid ? ` (PID ${desktopRuntime.collectorPid})` : ""}`
+                    : desktopRuntime?.collectorRunning
+                      ? "External"
+                      : "Stopped"
+                }
+              />
               <SettingRow label="AiOS API" value={agentBaseUrl} />
               <SettingRow label="AiOS auto-sync" value={agentAutoSync ? "Enabled" : "Manual"} />
               <SettingRow label="Refresh interval" value="3 seconds" />
