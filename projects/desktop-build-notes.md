@@ -36,31 +36,37 @@ Installed on June 14, 2026:
 - Rust `1.96.0`
 - Cargo `1.96.0`
 - rustup `1.29.0`
-
-Still required:
-
 - Visual Studio Build Tools 2022
 - Desktop development with C++ / MSVC
 - Windows SDK
 
-The automated Build Tools installation was cancelled at the Windows elevation prompt and returned installer code `1602`. Approve that installer before running the native build.
-
-After MSVC is installed, open a fresh terminal and run:
+Run:
 
 ```powershell
 npm run desktop:dev
 npm run desktop:build
 ```
 
-Validation completed without MSVC:
+Validation completed:
 
 ```powershell
 npm run build
 cargo fmt --all -- --check
 npx tauri info
+npm run desktop:build
 ```
 
-`cargo check` currently stops at `link.exe not found`, before the Tauri application can be linked.
+The release build pins `brotli-decompressor` `5.0.1` and `alloc-stdlib` `0.2.2`
+in `Cargo.lock`. Those releases use the same allocator API and avoid the
+incompatible transitive version combination resolved by the newer packages.
+
+## Release artifacts
+
+Successful Windows builds produce:
+
+- App executable: `src-tauri/target/release/what-do-you-do.exe`
+- NSIS installer: `src-tauri/target/release/bundle/nsis/What Do You Do_0.1.0_x64-setup.exe`
+- MSI installer: `src-tauri/target/release/bundle/msi/What Do You Do_0.1.0_x64_en-US.msi`
 
 ## Desktop app settings
 
