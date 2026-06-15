@@ -5,6 +5,8 @@ Native-rendered Windows, Android, and iOS client for the local-first
 
 The client reads privacy-filtered sessions from the local collector at
 `http://127.0.0.1:17321`. It does not collect operating-system signals itself.
+When AiOS Desktop is running, the collector pairs with it automatically and
+sends only closed, privacy-filtered activity summaries to the local dashboard.
 
 ## Windows development
 

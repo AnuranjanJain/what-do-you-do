@@ -92,7 +92,7 @@ Tauri client is still available during feature-parity work.
 
 ## AiOS Assistant Bridge
 
-`What Do You Do` connects to the local AiOS Assistant at `http://127.0.0.1:5000`.
+`What Do You Do` discovers the active local AiOS Desktop instance automatically.
 
 Workflow:
 
@@ -110,7 +110,7 @@ Bridge controls:
 - `Auto-sync approved summaries`: opt-in background sync while the dashboard is open.
 - `Reset sent list`: clears the local duplicate guard so current sessions can be sent again.
 
-Optional background sync from the collector:
+Manual background sync overrides:
 
 ```powershell
 $env:WDYD_AIOS_SYNC='1'
@@ -119,7 +119,7 @@ $env:WDYD_AIOS_API_TOKEN='paste-the-token-from-aios-settings'
 npm run collector:dev
 ```
 
-When enabled, the collector syncs closed sessions in the background and stores duplicate protection in `data/aios-sync-state.json`.
+Normally no variables are needed. The collector reads AiOS local runtime information or probes its loopback pairing endpoint, syncs closed sessions in the background, and stores duplicate protection in `data/aios-sync-state.json`.
 
 ## Privacy Boundary
 

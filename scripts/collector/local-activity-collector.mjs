@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "../..");
@@ -18,9 +19,9 @@ const host = "127.0.0.1";
 const port = Number.parseInt(process.env.WDYD_COLLECTOR_PORT ?? "17321", 10);
 const pollMs = Number.parseInt(process.env.WDYD_COLLECTOR_POLL_MS ?? "2500", 10);
 const idleThresholdMs = Number.parseInt(process.env.WDYD_IDLE_THRESHOLD_MS ?? "60000", 10);
-const aiosSyncEnabled = process.env.WDYD_AIOS_SYNC === "1";
-const aiosBaseUrl = normalizeLoopbackBaseUrl(process.env.WDYD_AIOS_URL ?? "http://127.0.0.1:5000");
-const aiosApiToken = process.env.WDYD_AIOS_API_TOKEN ?? "";
+let aiosSyncEnabled = process.env.WDYD_AIOS_SYNC === "1";
+let aiosBaseUrl = normalizeLoopbackBaseUrl(process.env.WDYD_AIOS_URL ?? "http://127.0.0.1:5050");
+let aiosApiToken = process.env.WDYD_AIOS_API_TOKEN ?? "";
 const maxSessions = 96;
 const maxJsonBodyBytes = 64 * 1024;
 const activityCategories = new Set(["coding", "browsing", "communication", "gaming", "watching", "idle"]);
@@ -51,7 +52,57 @@ async function bootstrapStorage() {
   await migrateLegacyStore();
   await loadActiveDate(activeDateKey);
   await loadAiosSyncState();
+  await discoverAiosRuntime();
   persistenceReady = true;
+}
+
+async function discoverAiosRuntime() {
+  if (process.env.WDYD_AIOS_URL && process.env.WDYD_AIOS_API_TOKEN) {
+    aiosSyncEnabled = process.env.WDYD_AIOS_SYNC !== "0";
+    return;
+  }
+
+  const candidates = process.platform === "win32"
+    ? [
+        join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "AiOS Assistant", "runtime.json"),
+      ]
+    : [
+        join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), "aios-assistant", "runtime.json"),
+      ];
+
+  for (const runtimePath of candidates) {
+    try {
+      const runtime = JSON.parse(await readFile(runtimePath, "utf-8"));
+      if (runtime.service !== "aios-assistant" || !runtime.base_url || !runtime.api_token) continue;
+      aiosBaseUrl = normalizeLoopbackBaseUrl(runtime.base_url);
+      aiosApiToken = String(runtime.api_token);
+      aiosSyncEnabled = true;
+      aiosSyncState.enabled = true;
+      return;
+    } catch {
+      // AiOS may not be running yet; discovery is retried before each sync.
+    }
+  }
+
+  for (let port = 5050; port <= 5069; port += 1) {
+    try {
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const response = await fetch(`${baseUrl}/api/local/pairing`, {
+        headers: { "User-Agent": "what-do-you-do-collector" },
+        signal: AbortSignal.timeout(250),
+      });
+      if (!response.ok) continue;
+      const runtime = await response.json();
+      if (runtime.service !== "aios-assistant" || !runtime.api_token) continue;
+      aiosBaseUrl = normalizeLoopbackBaseUrl(runtime.base_url ?? baseUrl);
+      aiosApiToken = String(runtime.api_token);
+      aiosSyncEnabled = true;
+      aiosSyncState.enabled = true;
+      return;
+    } catch {
+      // Try the next local AiOS desktop port.
+    }
+  }
 }
 
 async function migrateLegacyStore() {
@@ -394,6 +445,7 @@ async function persistAiosSyncState() {
 }
 
 async function syncClosedSessionsToAios() {
+  await discoverAiosRuntime();
   if (!aiosSyncEnabled) return;
 
   if (!aiosApiToken) {
