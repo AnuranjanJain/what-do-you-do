@@ -1027,7 +1027,9 @@ class HackathonsPage extends StatelessWidget {
     return _StandardPage(
       eyebrow: 'Opportunity tracker',
       title: 'Hackathon corner',
-      subtitle: 'Plans, deadlines, progress, and work logs from local storage.',
+      subtitle: controller.agent.connected
+          ? '${controller.agent.hackathons} AiOS source items, ${controller.agent.unreadHackathonUpdates} unread updates.'
+          : 'Plans, deadlines, progress, and work logs from local storage.',
       action: IconButton(
         tooltip: 'Refresh',
         onPressed: controller.refresh,
@@ -1235,45 +1237,198 @@ class AgentPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final agent = controller.agent;
     return _StandardPage(
       eyebrow: 'Companion integration',
-      title: 'Project AI Agent',
-      subtitle:
-          'Assistant features unlock through an explicit local connection.',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cards = [
-            const _FeatureCard(
-              icon: Icons.notifications_active_outlined,
-              title: 'Reminders',
-              text: 'Time, task, app, and project-aware reminders.',
+      title: 'Project AI Agent desktop',
+      subtitle: agent.message,
+      action: IconButton(
+        tooltip: 'Refresh agent services',
+        onPressed: controller.refresh,
+        icon: const Icon(Icons.refresh),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _AgentConnectionBanner(agent: agent),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cards = [
+                _FeatureCard(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Reminders',
+                  text: agent.connected
+                      ? '${agent.activeReminders} active, ${agent.reminders.length} due soon'
+                      : 'Time, task, app, and project-aware reminders.',
+                  value: agent.connected ? '${agent.activeReminders}' : null,
+                ),
+                _FeatureCard(
+                  icon: Icons.emoji_events_outlined,
+                  title: 'Hackathons',
+                  text: agent.connected
+                      ? '${agent.hackathons} source items, ${agent.unreadHackathonUpdates} unread updates'
+                      : 'Gmail and platform opportunity monitoring.',
+                  value: agent.connected ? '${agent.hackathons}' : null,
+                ),
+                _FeatureCard(
+                  icon: Icons.work_outline,
+                  title: 'Placements',
+                  text: agent.connected
+                      ? '${agent.placements} jobs, ${agent.unreadPlacementUpdates} unread updates'
+                      : 'Applications, interviews, status, and next actions.',
+                  value: agent.connected ? '${agent.placements}' : null,
+                ),
+                _FeatureCard(
+                  icon: Icons.school_outlined,
+                  title: 'NeoPat',
+                  text: agent.connected
+                      ? '${agent.neopat} practice or assessment items'
+                      : 'Practice-test and training assessment tracking.',
+                  value: agent.connected ? '${agent.neopat}' : null,
+                ),
+                _FeatureCard(
+                  icon: Icons.monitor_heart_outlined,
+                  title: 'Wellbeing context',
+                  text: agent.connected
+                      ? '${formatMinutes(agent.wellbeingMinutes)} already known by AiOS'
+                      : 'Approved WDYD summaries stay local.',
+                  value: agent.connected
+                      ? formatMinutes(agent.wellbeingMinutes)
+                      : null,
+                ),
+                _FeatureCard(
+                  icon: Icons.memory_outlined,
+                  title: 'Desktop services',
+                  text: agent.connected
+                      ? '${agent.runningWorkers}/${agent.workers.length} services running'
+                      : 'Reminder, import, and opportunity workers.',
+                  value: agent.connected
+                      ? '${agent.runningWorkers}/${agent.workers.length}'
+                      : null,
+                ),
+              ];
+              return GridView.count(
+                crossAxisCount: constraints.maxWidth > 900
+                    ? 3
+                    : constraints.maxWidth > 620
+                    ? 2
+                    : 1,
+                childAspectRatio: constraints.maxWidth > 620 ? 2.1 : 2.7,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                children: cards,
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          if (agent.connected) ...[
+            _Panel(
+              eyebrow: 'Plan',
+              title: 'What AiOS recommends today',
+              child: Text(
+                agent.planSummary.isEmpty
+                    ? 'No plan summary yet.'
+                    : agent.planSummary,
+              ),
             ),
-            const _FeatureCard(
-              icon: Icons.psychology_alt_outlined,
-              title: 'Important memory',
-              text: 'User-controlled notes and context worth retaining.',
+            const SizedBox(height: 12),
+            _Panel(
+              eyebrow: 'Services',
+              title: 'Desktop workers',
+              child: Column(
+                children: agent.workers
+                    .map((worker) => _WorkerRow(worker: worker))
+                    .toList(),
+              ),
             ),
-            const _FeatureCard(
-              icon: Icons.mark_email_unread_outlined,
-              title: 'Email insights',
-              text: 'Selected deadlines and follow-ups after opt-in.',
+            const SizedBox(height: 12),
+            _Panel(
+              eyebrow: 'Latest',
+              title: 'Agent context',
+              child: Column(
+                children: [
+                  _InfoLine(
+                    icon: Icons.insights_outlined,
+                    label: 'Latest opportunity',
+                    value: agent.latestOpportunityTitle.isEmpty
+                        ? 'No opportunity yet'
+                        : agent.latestOpportunityTitle,
+                  ),
+                  _InfoLine(
+                    icon: Icons.favorite_border,
+                    label: 'Latest wellbeing insight',
+                    value: agent.latestActivitySummary.isEmpty
+                        ? 'No wellbeing insight yet'
+                        : agent.latestActivitySummary,
+                  ),
+                ],
+              ),
             ),
-            const _FeatureCard(
-              icon: Icons.work_outline,
-              title: 'Job tracking',
-              text: 'Applications, interviews, status, and next actions.',
+          ] else
+            const _EmptyState(
+              message:
+                  'Start the AiOS Desktop app. WDYD will pair through the local loopback service automatically.',
             ),
-          ];
-          return GridView.count(
-            crossAxisCount: constraints.maxWidth > 750 ? 2 : 1,
-            childAspectRatio: constraints.maxWidth > 750 ? 2.2 : 2.8,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            children: cards,
-          );
-        },
+        ],
+      ),
+    );
+  }
+}
+
+class _AgentConnectionBanner extends StatelessWidget {
+  const _AgentConnectionBanner({required this.agent});
+  final AgentDesktopSnapshot agent;
+
+  @override
+  Widget build(BuildContext context) {
+    final connected = agent.connected;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: connected
+            ? AppColors.yellow.withValues(alpha: 0.22)
+            : Colors.grey.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: connected ? AppColors.yellow : Colors.grey,
+            foregroundColor: AppColors.ink,
+            child: Icon(connected ? Icons.link : Icons.link_off),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  connected
+                      ? 'Paired with AiOS Desktop'
+                      : 'AiOS Desktop unavailable',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  connected
+                      ? '${agent.baseUrl} · ${agent.desktop ? 'native desktop' : 'browser mode'}'
+                      : agent.message,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (connected)
+            Chip(
+              avatar: const Icon(Icons.lock_outline, size: 14),
+              label: const Text('Loopback'),
+              backgroundColor: Colors.white.withValues(alpha: 0.52),
+            ),
+        ],
       ),
     );
   }
@@ -1284,10 +1439,12 @@ class _FeatureCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.text,
+    this.value,
   });
   final IconData icon;
   final String title;
   final String text;
+  final String? value;
 
   @override
   Widget build(BuildContext context) {
@@ -1314,14 +1471,76 @@ class _FeatureCard extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
             ),
+            if (value != null) ...[
+              const SizedBox(width: 10),
+              Text(
+                value!,
+                style: const TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WorkerRow extends StatelessWidget {
+  const _WorkerRow({required this.worker});
+  final AgentWorker worker;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: worker.running
+            ? AppColors.yellow
+            : Colors.grey.withValues(alpha: 0.28),
+        foregroundColor: AppColors.ink,
+        child: Icon(worker.running ? Icons.play_arrow : Icons.pause),
+      ),
+      title: Text(
+        worker.name,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(
+        worker.lastError.isEmpty
+            ? (worker.managed ? 'Managed by AiOS Desktop' : worker.id)
+            : worker.lastError,
+      ),
+      trailing: Chip(label: Text(worker.running ? 'Running' : 'Stopped')),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(value),
     );
   }
 }
@@ -1465,6 +1684,16 @@ class SettingsPage extends StatelessWidget {
               label: 'Collector',
               value: controller.collectorOnline ? 'Online' : 'Offline',
             ),
+            _SettingRow(
+              label: 'AiOS Desktop',
+              value: controller.agent.connected ? 'Connected' : 'Unavailable',
+            ),
+            _SettingRow(
+              label: 'AiOS API',
+              value: controller.agent.connected
+                  ? controller.agent.baseUrl
+                  : 'Not paired',
+            ),
             const _SettingRow(
               label: 'Collector API',
               value: CollectorEndpoint.label,
@@ -1480,6 +1709,13 @@ class SettingsPage extends StatelessWidget {
               label: 'Rendering',
               value: 'Flutter native canvas',
             ),
+            if (controller.agent.connected) ...[
+              _SettingRow(label: 'AiOS data', value: controller.agent.dataDir),
+              _SettingRow(
+                label: 'AiOS imports',
+                value: controller.agent.importsDir,
+              ),
+            ],
           ],
         ),
       ),

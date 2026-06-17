@@ -26,6 +26,10 @@ The Flutter client currently uses:
 - `GET /health`
 - `GET /sessions?date=YYYY-MM-DD`
 - `GET /hackathons`
+- AiOS Desktop pairing through `GET /api/local/pairing`
+- AiOS Desktop service reads through `GET /api/live`, `GET /api/workers`,
+  `GET /api/desktop/status`, `GET /api/hackathons`, `GET /api/placements`,
+  and `GET /api/neopat`
 
 No raw window title, screenshot, keystroke, message, or file content is sent to
 the UI.
@@ -83,7 +87,7 @@ adjacent Flutter DLL and data directory.
 1. Move the collector into a bundled native sidecar.
 2. Add correction and note editing from Flutter.
 3. Add create/edit/delete forms for hackathons.
-4. Port the authenticated AiOS connection and approved-summary sync controls.
+4. Add approved-summary sync controls to the Flutter UI.
 5. Add native Windows notifications, tray behavior, and startup settings.
 6. Implement Android/iOS companion discovery instead of assuming loopback.
 7. Package and sign the Flutter Windows release.

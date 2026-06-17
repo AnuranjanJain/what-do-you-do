@@ -1,6 +1,6 @@
 import { ActivitySession } from "../domain/activity";
 
-const defaultAiosBaseUrl = "http://127.0.0.1:5000";
+const defaultAiosBaseUrl = "http://127.0.0.1:5050";
 const sentSessionStorageKey = "wdyd.aios.sentSessions.v1";
 const aiosBaseUrlStorageKey = "wdyd.aios.baseUrl";
 
@@ -39,6 +39,15 @@ export function getAiosBaseUrl(): string {
   }
 }
 
+export function getAiosCandidateBaseUrls(): string[] {
+  return Array.from(new Set([
+    getAiosBaseUrl(),
+    defaultAiosBaseUrl,
+    "http://127.0.0.1:5000",
+    ...Array.from({ length: 19 }, (_, index) => `http://127.0.0.1:${5051 + index}`),
+  ]));
+}
+
 export function setAiosBaseUrl(baseUrl: string): string {
   const normalized = normalizeBaseUrl(baseUrl);
   window.localStorage.setItem(aiosBaseUrlStorageKey, normalized);
@@ -55,27 +64,40 @@ export function clearAiosSyncHistory(): void {
 }
 
 export async function checkAiosConnection(): Promise<AiosLiveStatus> {
-  const response = await fetch(`${getAiosBaseUrl()}/api/live`, {
-    cache: "no-store",
-    credentials: "include",
-  });
+  let lastError: unknown = null;
 
-  if (response.status === 401) {
-    return { ok: false, locked: true };
+  for (const baseUrl of getAiosCandidateBaseUrls()) {
+    try {
+      const response = await fetch(`${baseUrl}/api/live`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+
+      if (response.status === 401) {
+        window.localStorage.setItem(aiosBaseUrlStorageKey, baseUrl);
+        return { ok: false, locked: true };
+      }
+
+      if (!response.ok) {
+        lastError = new Error(`AiOS responded with ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      window.localStorage.setItem(aiosBaseUrlStorageKey, baseUrl);
+
+      return {
+        ok: true,
+        locked: false,
+        stats: data.stats,
+        updatedAt: data.updated_at,
+      };
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  if (!response.ok) {
-    throw new Error(`AiOS responded with ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  return {
-    ok: true,
-    locked: false,
-    stats: data.stats,
-    updatedAt: data.updated_at,
-  };
+  throw lastError instanceof Error ? lastError : new Error("Unable to reach local AiOS Desktop.");
 }
 
 export async function syncActivitySessions(sessions: ActivitySession[]): Promise<AiosSyncResult> {

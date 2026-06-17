@@ -123,6 +123,183 @@ class Hackathon {
   final String workDone;
 }
 
+class AgentDesktopSnapshot {
+  const AgentDesktopSnapshot({
+    required this.baseUrl,
+    required this.connected,
+    required this.desktop,
+    required this.message,
+    required this.wellbeingMinutes,
+    required this.activeReminders,
+    required this.opportunities,
+    required this.hackathons,
+    required this.placements,
+    required this.neopat,
+    required this.unreadHackathonUpdates,
+    required this.unreadPlacementUpdates,
+    required this.unreadNeoPatUpdates,
+    required this.workers,
+    required this.reminders,
+    required this.planSummary,
+    required this.latestOpportunityTitle,
+    required this.latestActivitySummary,
+    required this.dataDir,
+    required this.importsDir,
+    required this.updatedAt,
+  });
+
+  factory AgentDesktopSnapshot.disconnected(String message) {
+    return AgentDesktopSnapshot(
+      baseUrl: '',
+      connected: false,
+      desktop: false,
+      message: message,
+      wellbeingMinutes: 0,
+      activeReminders: 0,
+      opportunities: 0,
+      hackathons: 0,
+      placements: 0,
+      neopat: 0,
+      unreadHackathonUpdates: 0,
+      unreadPlacementUpdates: 0,
+      unreadNeoPatUpdates: 0,
+      workers: const [],
+      reminders: const [],
+      planSummary: '',
+      latestOpportunityTitle: '',
+      latestActivitySummary: '',
+      dataDir: '',
+      importsDir: '',
+      updatedAt: '',
+    );
+  }
+
+  factory AgentDesktopSnapshot.fromJson({
+    required String baseUrl,
+    required Map<String, dynamic> live,
+    required Map<String, dynamic> desktop,
+    required Map<String, dynamic> workers,
+    required Map<String, dynamic> hackathons,
+    required Map<String, dynamic> placements,
+    required Map<String, dynamic> neopat,
+  }) {
+    final stats = live['stats'] as Map<String, dynamic>? ?? const {};
+    final latestActivity =
+        live['latest_activity'] as Map<String, dynamic>? ?? const {};
+    final latestOpportunity =
+        live['latest_opportunity'] as Map<String, dynamic>? ?? const {};
+    final plan = live['plan'] as Map<String, dynamic>? ?? const {};
+
+    return AgentDesktopSnapshot(
+      baseUrl: baseUrl,
+      connected: true,
+      desktop: desktop['desktop'] == true,
+      message: 'Connected to AiOS Desktop at $baseUrl',
+      wellbeingMinutes: (stats['wellbeing_minutes'] as num?)?.round() ?? 0,
+      activeReminders: (stats['active_reminders'] as num?)?.round() ?? 0,
+      opportunities: (stats['opportunities'] as num?)?.round() ?? 0,
+      hackathons: _countList(hackathons['hackathons']),
+      placements: _countList(placements['placements']),
+      neopat: _countList(neopat['placements']),
+      unreadHackathonUpdates:
+          (hackathons['unread_updates'] as num?)?.round() ?? 0,
+      unreadPlacementUpdates:
+          (placements['unread_updates'] as num?)?.round() ?? 0,
+      unreadNeoPatUpdates: (neopat['unread_updates'] as num?)?.round() ?? 0,
+      workers: _workersFromJson(workers),
+      reminders: _remindersFromJson(live['reminders']),
+      planSummary: plan['summary']?.toString() ?? '',
+      latestOpportunityTitle: latestOpportunity['title']?.toString() ?? '',
+      latestActivitySummary: latestActivity['agent_summary']?.toString() ?? '',
+      dataDir: desktop['data_dir']?.toString() ?? '',
+      importsDir: desktop['imports_dir']?.toString() ?? '',
+      updatedAt: live['updated_at']?.toString() ?? '',
+    );
+  }
+
+  final String baseUrl;
+  final bool connected;
+  final bool desktop;
+  final String message;
+  final int wellbeingMinutes;
+  final int activeReminders;
+  final int opportunities;
+  final int hackathons;
+  final int placements;
+  final int neopat;
+  final int unreadHackathonUpdates;
+  final int unreadPlacementUpdates;
+  final int unreadNeoPatUpdates;
+  final List<AgentWorker> workers;
+  final List<AgentReminder> reminders;
+  final String planSummary;
+  final String latestOpportunityTitle;
+  final String latestActivitySummary;
+  final String dataDir;
+  final String importsDir;
+  final String updatedAt;
+
+  int get runningWorkers => workers.where((worker) => worker.running).length;
+}
+
+class AgentWorker {
+  const AgentWorker({
+    required this.id,
+    required this.name,
+    required this.running,
+    required this.managed,
+    required this.lastError,
+  });
+
+  final String id;
+  final String name;
+  final bool running;
+  final bool managed;
+  final String lastError;
+}
+
+class AgentReminder {
+  const AgentReminder({
+    required this.id,
+    required this.title,
+    required this.dueAt,
+  });
+
+  final int id;
+  final String title;
+  final String dueAt;
+}
+
+int _countList(dynamic value) {
+  if (value is List<dynamic>) return value.length;
+  return 0;
+}
+
+List<AgentWorker> _workersFromJson(Map<String, dynamic> json) {
+  final raw = json['items'] ?? json['value'] ?? json['workers'];
+  if (raw is! List<dynamic>) return const [];
+  return raw.whereType<Map<String, dynamic>>().map((item) {
+    return AgentWorker(
+      id: item['id']?.toString() ?? '',
+      name: item['name']?.toString() ?? 'Worker',
+      running: item['running'] == true,
+      managed: item['managed'] == true,
+      lastError: item['last_error']?.toString() ?? '',
+    );
+  }).toList();
+}
+
+List<AgentReminder> _remindersFromJson(dynamic raw) {
+  if (raw is! List<dynamic>) return const [];
+  return raw.whereType<Map<String, dynamic>>().map((item) {
+    return AgentReminder(
+      id: (item['id'] as num?)?.round() ?? 0,
+      title: item['title']?.toString() ?? 'Reminder',
+      dueAt: item['due_at']?.toString() ?? '',
+    );
+  }).toList();
+}
+
 class CategoryTotal {
   const CategoryTotal(this.category, this.minutes);
 

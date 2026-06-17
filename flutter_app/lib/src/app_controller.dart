@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
+import 'agent_desktop_api.dart';
 import 'collector_api.dart';
 import 'models.dart';
 
 class AppController extends ChangeNotifier {
-  AppController({CollectorApi? api}) : _api = api ?? CollectorApi();
+  AppController({CollectorApi? api, AgentDesktopApi? agentApi})
+    : _api = api ?? CollectorApi(),
+      _agentApi = agentApi ?? AgentDesktopApi();
 
   final CollectorApi _api;
+  final AgentDesktopApi _agentApi;
   Timer? _refreshTimer;
 
   bool darkMode = false;
@@ -21,6 +25,9 @@ class AppController extends ChangeNotifier {
   List<String> availableDates = const [];
   List<ActivitySession> sessions = const [];
   List<Hackathon> hackathons = const [];
+  AgentDesktopSnapshot agent = AgentDesktopSnapshot.disconnected(
+    'AiOS Desktop has not been checked yet.',
+  );
 
   DashboardSummary get summary => DashboardSummary.fromSessions(sessions);
 
@@ -42,10 +49,20 @@ class AppController extends ChangeNotifier {
       await _api.health();
       final response = await _api.sessions(selectedDate);
       List<Hackathon> loadedHackathons = hackathons;
+      AgentDesktopSnapshot loadedAgent = agent;
       try {
         loadedHackathons = await _api.hackathons();
       } catch (_) {
         // Activity remains usable if the optional board cannot be loaded.
+      }
+      try {
+        loadedAgent = await _agentApi.snapshot();
+      } catch (error) {
+        loadedAgent = AgentDesktopSnapshot.disconnected(
+          error is Exception
+              ? error.toString().replaceFirst('Exception: ', '')
+              : 'AiOS Desktop is unavailable.',
+        );
       }
 
       collectorOnline = true;
@@ -53,12 +70,22 @@ class AppController extends ChangeNotifier {
       availableDates = response.availableDates;
       sessions = response.sessions;
       hackathons = loadedHackathons;
+      agent = loadedAgent;
       message = sessions.isEmpty
           ? 'No activity recorded for $selectedDate.'
           : '${sessions.length} private local sessions loaded.';
     } catch (_) {
       collectorOnline = false;
       sessions = const [];
+      try {
+        agent = await _agentApi.snapshot();
+      } catch (error) {
+        agent = AgentDesktopSnapshot.disconnected(
+          error is Exception
+              ? error.toString().replaceFirst('Exception: ', '')
+              : 'AiOS Desktop is unavailable.',
+        );
+      }
       message =
           'Collector is offline. Start the local collector to show real data.';
     } finally {

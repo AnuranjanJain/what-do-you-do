@@ -93,6 +93,10 @@ Tauri client is still available during feature-parity work.
 ## AiOS Assistant Bridge
 
 `What Do You Do` discovers the active local AiOS Desktop instance automatically.
+The current desktop service starts on `http://127.0.0.1:5050` and may use
+nearby ports if that port is busy. WDYD pairs through the loopback-only
+`/api/local/pairing` endpoint and uses the returned local token for desktop
+service APIs when AiOS is locked.
 
 Workflow:
 
@@ -105,7 +109,7 @@ Workflow:
 
 Bridge controls:
 
-- `AiOS API`: editable local backend URL, stored in browser local storage.
+- `AiOS API`: discovered local desktop URL, with legacy manual override support.
 - `Pending sync`: count of local sessions not yet sent to AiOS.
 - `Auto-sync approved summaries`: opt-in background sync while the dashboard is open.
 - `Reset sent list`: clears the local duplicate guard so current sessions can be sent again.
@@ -114,7 +118,7 @@ Manual background sync overrides:
 
 ```powershell
 $env:WDYD_AIOS_SYNC='1'
-$env:WDYD_AIOS_URL='http://127.0.0.1:5000'
+$env:WDYD_AIOS_URL='http://127.0.0.1:5050'
 $env:WDYD_AIOS_API_TOKEN='paste-the-token-from-aios-settings'
 npm run collector:dev
 ```
@@ -146,7 +150,11 @@ The Hackathon Corner combines:
 - connector health and manual `Scan now`
 - one-click addition of discovered hackathons to the local build board
 
-The source inbox polls `GET http://127.0.0.1:5000/api/hackathons` and `GET http://127.0.0.1:5000/api/placements` every 30 seconds. AiOS performs the Gmail/platform monitoring, keeping credentials and source processing out of the wellbeing UI.
+The source inbox reads the paired AiOS Desktop service APIs:
+`GET /api/hackathons`, `GET /api/placements`, `GET /api/neopat`,
+`GET /api/live`, `GET /api/workers`, and `GET /api/desktop/status`.
+AiOS performs the Gmail/platform monitoring, keeping credentials and source
+processing out of the wellbeing UI.
 
 Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates in `data/hackathons.json`.
 

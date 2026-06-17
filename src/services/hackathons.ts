@@ -1,5 +1,5 @@
 import { AiosHackathon, Hackathon, HackathonDraft, HackathonFeed, PlacementFeed } from "../domain/hackathon";
-import { getAiosBaseUrl } from "./aios";
+import { getAiosCandidateBaseUrls } from "./aios";
 
 const collectorBaseUrl = "http://127.0.0.1:17321";
 
@@ -200,10 +200,9 @@ function normalizeTitle(value: string): string {
 }
 
 async function fetchAiosSource(path: string, init: RequestInit): Promise<Response> {
-  const urls = Array.from(new Set([getAiosBaseUrl(), "http://127.0.0.1:5000"]));
   let lastError: unknown = null;
 
-  for (const baseUrl of urls) {
+  for (const baseUrl of getAiosCandidateBaseUrls()) {
     try {
       const response = await fetch(`${baseUrl}${path}`, init);
       if (response.ok || response.status === 401) {
