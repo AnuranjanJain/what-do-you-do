@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -8,12 +10,18 @@ import 'collector_api.dart';
 import 'models.dart';
 
 class AppController extends ChangeNotifier {
-  AppController({CollectorApi? api, AgentDesktopApi? agentApi})
+  AppController({
+    CollectorApi? api,
+    AgentDesktopApi? agentApi,
+    File? preferencesFile,
+  })
     : _api = api ?? CollectorApi(),
-      _agentApi = agentApi ?? AgentDesktopApi();
+      _agentApi = agentApi ?? AgentDesktopApi(),
+      _preferencesFileOverride = preferencesFile;
 
   final CollectorApi _api;
   final AgentDesktopApi _agentApi;
+  final File? _preferencesFileOverride;
   Timer? _refreshTimer;
 
   bool darkMode = false;
@@ -32,6 +40,7 @@ class AppController extends ChangeNotifier {
   DashboardSummary get summary => DashboardSummary.fromSessions(sessions);
 
   Future<void> initialize() async {
+    await _loadPreferences();
     await refresh();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 4),
@@ -102,6 +111,38 @@ class AppController extends ChangeNotifier {
   void toggleTheme() {
     darkMode = !darkMode;
     notifyListeners();
+    unawaited(_savePreferences());
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final file = _preferencesFile();
+      if (!await file.exists()) return;
+      final data = jsonDecode(await file.readAsString());
+      if (data case {'darkMode': final bool savedDarkMode}) {
+        darkMode = savedDarkMode;
+      }
+    } catch (_) {
+      // Corrupt preferences should never block the local dashboard.
+    }
+  }
+
+  Future<void> _savePreferences() async {
+    try {
+      final file = _preferencesFile();
+      await file.parent.create(recursive: true);
+      await file.writeAsString(jsonEncode({'darkMode': darkMode}));
+    } catch (_) {
+      // Theme persistence is best-effort and must not interrupt the app.
+    }
+  }
+
+  File _preferencesFile() {
+    if (_preferencesFileOverride case final override?) return override;
+    final base = Platform.environment['LOCALAPPDATA'] ??
+        Platform.environment['APPDATA'] ??
+        Directory.current.path;
+    return File('$base\\What Do You Do\\settings.json');
   }
 
   @override

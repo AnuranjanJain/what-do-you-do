@@ -34,57 +34,44 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final controller = widget.controller;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(wide ? 28 : 0),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(wide ? 34 : 0),
-              boxShadow: wide
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 36,
-                        offset: const Offset(0, 18),
-                      ),
-                    ]
-                  : null,
+      backgroundColor: colorScheme.surface,
+      body: ColoredBox(
+        color: colorScheme.surface,
+        child: Column(
+          children: [
+            _TopBar(
+              darkMode: controller.darkMode,
+              online: controller.collectorOnline,
+              onToggleTheme: controller.toggleTheme,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(wide ? 34 : 0),
-              child: Column(
+            Expanded(
+              child: Row(
                 children: [
-                  _TopBar(
-                    darkMode: controller.darkMode,
-                    online: controller.collectorOnline,
-                    onToggleTheme: controller.toggleTheme,
-                  ),
+                  if (wide)
+                    _DesktopNavigation(
+                      destinations: destinations,
+                      selectedIndex: selectedIndex,
+                      onSelected: (index) =>
+                          setState(() => selectedIndex = index),
+                    ),
                   Expanded(
-                    child: Row(
-                      children: [
-                        if (wide)
-                          _DesktopNavigation(
-                            destinations: destinations,
-                            selectedIndex: selectedIndex,
-                            onSelected: (index) =>
-                                setState(() => selectedIndex = index),
-                          ),
-                        Expanded(
-                          child: _PageBody(
-                            index: selectedIndex,
-                            controller: controller,
-                          ),
-                        ),
-                      ],
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(wide ? 24 : 0),
+                      ),
+                      child: _PageBody(
+                        index: selectedIndex,
+                        controller: controller,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
       bottomNavigationBar: wide

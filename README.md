@@ -1,176 +1,121 @@
 # What Do You Do
 
-Privacy-first activity intelligence for desktop and mobile. The app helps a user understand what they actually did across the day: coding, researching, browsing, gaming, Discord, learning, idle time, hackathon work, reminders, notes, and AI-agent-assisted productivity.
+<p align="center">
+  <img src="docs/readme-banner.svg" alt="What Do You Do animated banner" />
+</p>
 
-Everything is designed around a local-first rule: raw activity stays on the user's devices, and only approved summaries can be shared with the companion AI agent.
+<p align="center">
+  <b>A cute local-first activity dashboard that answers the question: where did my day go?</b>
+</p>
 
-## Demo
+<p align="center">
+  <img alt="Local first" src="https://img.shields.io/badge/local--first-yes-FFD84D?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Flutter desktop" src="https://img.shields.io/badge/flutter-desktop-5ED9E8?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Privacy" src="https://img.shields.io/badge/raw%20data-on%20device-DFF0E4?style=for-the-badge&labelColor=1F211D" />
+</p>
+
+## Peek
+
+<p align="center">
+  <img src="docs/screenshots/theme-switch.gif" alt="Light and dark mode preview" />
+</p>
 
 <table>
   <tr>
-    <td colspan="2">
-      <img src="docs/screenshots/dashboard-light.png" alt="What Do You Do light dashboard" />
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/dashboard-dark.png" alt="What Do You Do dark dashboard" />
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/dashboard-mobile.png" alt="What Do You Do mobile dashboard" />
-    </td>
+    <td><img src="docs/screenshots/dashboard-light.png" alt="Light desktop dashboard" /></td>
+    <td><img src="docs/screenshots/dashboard-dark.png" alt="Dark desktop dashboard" /></td>
   </tr>
 </table>
 
-## Highlights
+## The Vibe
 
-- Native-rendered Flutter dashboard with light and dark mode
-- Live local Windows activity collector for foreground app and idle state
-- Dynamic daily dashboard backed by persisted local session files
-- Activity timeline with top detected contexts and deeper logs
-- Local correction flow for better labels over time
-- Project AI Agent / AiOS bridge for approved wellbeing summaries
-- Hackathon Corner for timelines, applied dates, deadlines, plans, work logs, and source inbox updates
-- Desktop and mobile widget previews
-- Flutter clients for Windows, Android, and iOS
-- Legacy Tauri client retained temporarily as a migration reference
-- Privacy controls that make the data boundary visible
+`What Do You Do` is a private activity OS for desktop and mobile. It tracks real local signals, groups them into useful context, and turns the messy day into a readable dashboard.
 
-## Local Architecture
+It is built for:
 
-```text
-Windows desktop signals
-        |
-        v
-Local activity collector
-        |
-        v
-data/*.json session store  --->  Flutter dashboard
-        |                              |
-        |                              v
-        |                       corrections, notes,
-        |                       widgets, hackathons
-        v
-optional approved summaries
-        |
-        v
-Project AI Agent / AiOS
+- coding, browsing, watching, gaming, Discord, idle time, notes, and reminders
+- hackathon timelines, applied dates, plans, work logs, and source updates
+- optional AiOS / Project AI Agent integration after the local agent is installed
+- light and dark native Flutter UI with persistent theme choice
+
+## How It Works
+
+```mermaid
+flowchart LR
+  signals["Desktop signals"] --> collector["Local collector"]
+  collector --> store["data/*.json"]
+  store --> app["Flutter desktop app"]
+  app --> widgets["Widgets + dashboard"]
+  app --> hacks["Hackathon board"]
+  app --> privacy["Privacy controls"]
+  app -. approved summaries only .-> aios["AiOS / Project AI Agent"]
 ```
 
-The dashboard can run without AiOS. When AiOS is installed and unlocked locally, `What Do You Do` can sync high-level summaries to the agent through the local API.
+No screenshots, keystrokes, private messages, raw browser history, or full notes are sent to the agent. The bridge shares only approved summaries.
 
-## Quick Start
+## Run It
 
 ```powershell
 npm install
-npm run dev
-```
-
-Run the local collector in a second terminal:
-
-```powershell
 npm run collector:dev
 ```
 
-Build the web app:
-
-```powershell
-npm run build
-```
-
-Run the native Flutter desktop client:
+Native desktop:
 
 ```powershell
 cd flutter_app
 C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
-C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
 ```
 
-See [Flutter migration](projects/flutter-migration.md) for architecture,
-platform targets, build output, and remaining migration work. The previous
-Tauri client is still available during feature-parity work.
-
-## AiOS Assistant Bridge
-
-`What Do You Do` discovers the active local AiOS Desktop instance automatically.
-The current desktop service starts on `http://127.0.0.1:5050` and may use
-nearby ports if that port is busy. WDYD pairs through the loopback-only
-`/api/local/pairing` endpoint and uses the returned local token for desktop
-service APIs when AiOS is locked.
-
-Workflow:
-
-1. Start AiOS Assistant from `C:\Users\anura\Documents\Ai Agent`.
-2. Unlock AiOS in the browser if the local PIN is enabled.
-3. Start this app and the collector with `npm run dev` and `npm run collector:dev`.
-4. Open the `Project AI Agent` panel and press `Connect`.
-5. Press `Sync` to send new high-level activity sessions to AiOS.
-6. Optionally enable `Auto-sync approved summaries` after the connection is verified.
-
-Bridge controls:
-
-- `AiOS API`: discovered local desktop URL, with legacy manual override support.
-- `Pending sync`: count of local sessions not yet sent to AiOS.
-- `Auto-sync approved summaries`: opt-in background sync while the dashboard is open.
-- `Reset sent list`: clears the local duplicate guard so current sessions can be sent again.
-
-Manual background sync overrides:
+Build and install the Windows app:
 
 ```powershell
-$env:WDYD_AIOS_SYNC='1'
-$env:WDYD_AIOS_URL='http://127.0.0.1:5050'
-$env:WDYD_AIOS_API_TOKEN='paste-the-token-from-aios-settings'
-npm run collector:dev
+cd flutter_app
+C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
 ```
 
-Normally no variables are needed. The collector reads AiOS local runtime information or probes its loopback pairing endpoint, syncs closed sessions in the background, and stores duplicate protection in `data/aios-sync-state.json`.
+After install, Windows Search should find **What Do You Do** from the Start Menu shortcut.
 
-## Privacy Boundary
-
-The bridge sends only approved summary fields:
-
-- app name
-- broad category
-- sub-activity label
-- start and end time label
-- duration in minutes
-
-It does not send screenshots, keystrokes, raw window titles, private messages, browser history, files, or full notes.
-
-See [Security](SECURITY.md) for the local threat model, implemented controls, and current data-at-rest limitation.
-
-## Hackathon Corner
-
-The Hackathon Corner combines:
-
-- a four-stage local board: Watching, Applied, Building, Submitted
-- manual plans, progress, work logs, deadlines, and timeline entries
-- a live AiOS source inbox for Gmail and platform updates
-- unread update controls
-- connector health and manual `Scan now`
-- one-click addition of discovered hackathons to the local build board
-
-The source inbox reads the paired AiOS Desktop service APIs:
-`GET /api/hackathons`, `GET /api/placements`, `GET /api/neopat`,
-`GET /api/live`, `GET /api/workers`, and `GET /api/desktop/status`.
-AiOS performs the Gmail/platform monitoring, keeping credentials and source
-processing out of the wellbeing UI.
-
-Each hackathon stores its applied date, deadline, progress percentage, plan, work completed, URL, and dated timeline updates in `data/hackathons.json`.
-
-Local API:
+## Project Map
 
 ```text
+.
+├─ flutter_app/              native Flutter desktop/mobile client
+│  ├─ lib/src/               app shell, controller, APIs, models, theme
+│  ├─ test/                  layout, summary, parsing, settings tests
+│  └─ windows/install/       local Windows install + uninstall scripts
+├─ src/                      legacy web dashboard kept during migration
+├─ scripts/                  local collector and API helpers
+├─ data/                     local-only session, sync, and hackathon data
+├─ docs/screenshots/         README screenshots and GIF previews
+└─ projects/                 architecture notes and build plans
+```
+
+## Local APIs
+
+```text
+GET  /health
+GET  /sessions?date=YYYY-MM-DD
 GET  /hackathons
 POST /hackathons/save
 POST /hackathons/timeline
 POST /hackathons/delete
 ```
 
-## Project Docs
+AiOS bridge endpoints are discovered through loopback pairing, usually at `http://127.0.0.1:5050`.
 
-- [Project brief](projects/what-do-you-do.md)
-- [Architecture](projects/architecture.md)
-- [Local collector notes](projects/local-collector-notes.md)
-- [Real data pipeline](projects/real-data-pipeline.md)
-- [Flutter migration](projects/flutter-migration.md)
+```text
+GET /api/local/pairing
+GET /api/live
+GET /api/workers
+GET /api/hackathons
+GET /api/placements
+GET /api/neopat
+```
+
+## Privacy Promise
+
+Raw activity stays on device by default. The app is designed around boring-but-good rules: loopback APIs, local JSON storage, visible sync controls, and agent features that unlock only when the companion desktop agent is installed and paired.
+
+More detail lives in [SECURITY.md](SECURITY.md), [projects/architecture.md](projects/architecture.md), and [projects/flutter-migration.md](projects/flutter-migration.md).

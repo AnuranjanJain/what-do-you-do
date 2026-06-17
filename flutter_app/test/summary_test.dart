@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:what_do_you_do/src/agent_desktop_api.dart';
+import 'package:what_do_you_do/src/app_controller.dart';
+import 'package:what_do_you_do/src/collector_api.dart';
 import 'package:what_do_you_do/src/models.dart';
 
 void main() {
@@ -89,4 +94,45 @@ void main() {
     expect(snapshot.wellbeingMinutes, 49);
     expect(snapshot.latestOpportunityTitle, 'Backend Intern Opening');
   });
+
+  test('theme preference is saved locally', () async {
+    final tempDir = await Directory.systemTemp.createTemp('wdyd-settings-');
+    addTearDown(() => tempDir.delete(recursive: true));
+    final preferencesFile = File('${tempDir.path}\\settings.json');
+
+    final controller = AppController(
+      api: _FakeCollectorApi(),
+      agentApi: _FakeAgentDesktopApi(),
+      preferencesFile: preferencesFile,
+    );
+    addTearDown(controller.dispose);
+
+    controller.toggleTheme();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(await preferencesFile.readAsString(), contains('"darkMode":true'));
+  });
+}
+
+class _FakeCollectorApi extends CollectorApi {
+  @override
+  Future<Map<String, dynamic>> health() async => const {'ok': true};
+
+  @override
+  Future<SessionsResponse> sessions(String date) async => SessionsResponse(
+    activeDateKey: date,
+    availableDates: [date],
+    date: date,
+    isLiveDate: true,
+    sessions: const [],
+  );
+
+  @override
+  Future<List<Hackathon>> hackathons() async => const [];
+}
+
+class _FakeAgentDesktopApi extends AgentDesktopApi {
+  @override
+  Future<AgentDesktopSnapshot> snapshot() async =>
+      AgentDesktopSnapshot.disconnected('Test agent disconnected.');
 }
