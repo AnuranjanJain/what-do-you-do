@@ -9,11 +9,22 @@
 
 The digital wellbeing app should work by itself. The assistant features should unlock only after `Project AI Agent` is installed and explicitly connected by the user.
 
+Platform split for v1:
+
+- Linux uses the local React/Vite browser dashboard.
+- Windows uses the installed native Flutter desktop app.
+- Both clients read from the same local collector/API and local data store.
+- Tauri is historical migration reference unless removed in a later cleanup.
+
 ## App collaboration flow
 
 ```mermaid
 flowchart TD
-    A["User installs What Do You Do"] --> B["Local onboarding"]
+    A["User chooses platform"] --> Z{"Platform"}
+    Z -->|Linux| Y["Run local browser dashboard"]
+    Z -->|Windows| X["Install Windows Flutter app"]
+    Y --> B["Local onboarding"]
+    X --> B
     B --> C["User grants basic permissions"]
     C --> D["Activity detection starts"]
     D --> E["Local activity timeline"]
@@ -57,7 +68,8 @@ flowchart LR
             B["Signal Collectors"]
             C["Activity Classifier"]
             D["Local Timeline Store"]
-            E["Wellbeing Dashboard"]
+            E["Linux Browser Dashboard"]
+            W["Windows Flutter App"]
             F["Privacy Control Center"]
             G["Integration Bridge"]
         end
@@ -89,6 +101,7 @@ flowchart LR
         B --> C
         C --> D
         D --> E
+        D --> W
         F --> A
         F --> D
         D --> G
@@ -347,15 +360,16 @@ Every permission should include:
 
 ## MVP architecture
 
-The first MVP should be desktop-first and local-only.
+The first MVP should be local-only with two platform surfaces.
 
 MVP scope:
 
-- Windows desktop app
+- Linux browser dashboard
+- Windows installed Flutter app
 - Active app and window tracking
 - Idle detection
 - Basic activity categories
-- Local SQLite timeline
+- Local timeline storage
 - Daily dashboard
 - Manual label correction
 - Privacy controls
@@ -374,7 +388,7 @@ Phase 3:
 
 - Email reading
 - Job tracker
-- Mobile app
+- Mobile companion app
 - Mobile widgets
 - Optional encrypted sync
 - Personal local learning from corrections

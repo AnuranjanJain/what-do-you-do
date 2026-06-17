@@ -1,12 +1,13 @@
-# What Do You Do - Flutter Client
+# What Do You Do - Windows Flutter App
 
-Native-rendered Windows, Android, and iOS client for the local-first
-`What Do You Do` activity intelligence system.
+Native-rendered Windows app for the local-first `What Do You Do` activity
+intelligence system. Linux v1 uses the React/Vite browser dashboard in the
+repository root; Android and iOS remain future companion targets.
 
 The client reads privacy-filtered sessions from the local collector at
 `http://127.0.0.1:17321`. It does not collect operating-system signals itself.
-When AiOS Desktop is running, the collector pairs with it automatically and
-sends only closed, privacy-filtered activity summaries to the local dashboard.
+When AiOS Desktop is running, the app pairs through the loopback-only local API
+and reads approved service summaries without sending raw private activity.
 
 ## Windows development
 
@@ -26,6 +27,12 @@ Build:
 
 ```powershell
 C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
+```
+
+Install for Windows Search / Start Menu:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
 ```
 
 The complete release folder is:

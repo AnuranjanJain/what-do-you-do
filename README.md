@@ -10,7 +10,8 @@
 
 <p align="center">
   <img alt="Local first" src="https://img.shields.io/badge/local--first-yes-FFD84D?style=for-the-badge&labelColor=1F211D" />
-  <img alt="Flutter desktop" src="https://img.shields.io/badge/flutter-desktop-5ED9E8?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Linux browser" src="https://img.shields.io/badge/linux-browser-DFF0E4?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Windows app" src="https://img.shields.io/badge/windows-app-5ED9E8?style=for-the-badge&labelColor=1F211D" />
   <img alt="Privacy" src="https://img.shields.io/badge/raw%20data-on%20device-DFF0E4?style=for-the-badge&labelColor=1F211D" />
 </p>
 
@@ -22,52 +23,47 @@
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/dashboard-light.png" alt="Light desktop dashboard" /></td>
-    <td><img src="docs/screenshots/dashboard-dark.png" alt="Dark desktop dashboard" /></td>
+    <td><img src="docs/screenshots/dashboard-light.png" alt="Light Windows desktop dashboard" /></td>
+    <td><img src="docs/screenshots/dashboard-dark.png" alt="Dark Windows desktop dashboard" /></td>
   </tr>
 </table>
 
 ## The Vibe
 
-`What Do You Do` is a private activity OS for desktop and mobile. It tracks real local signals, groups them into useful context, and turns the messy day into a readable dashboard.
+`What Do You Do` is a private activity OS with two clear app surfaces:
 
-It is built for:
+- **Linux:** local React/Vite dashboard in the browser
+- **Windows:** installed native Flutter desktop app
 
-- coding, browsing, watching, gaming, Discord, idle time, notes, and reminders
-- hackathon timelines, applied dates, plans, work logs, and source updates
-- optional AiOS / Project AI Agent integration after the local agent is installed
-- light and dark native Flutter UI with persistent theme choice
+Both read the same local collector data, keep raw activity on-device, and can optionally talk to AiOS / Project AI Agent through loopback-only approved summaries.
 
 ## How It Works
 
 ```mermaid
 flowchart LR
-  signals["Desktop signals"] --> collector["Local collector"]
+  signals["Local device signals"] --> collector["Local collector/API"]
   collector --> store["data/*.json"]
-  store --> app["Flutter desktop app"]
-  app --> widgets["Widgets + dashboard"]
-  app --> hacks["Hackathon board"]
-  app --> privacy["Privacy controls"]
-  app -. approved summaries only .-> aios["AiOS / Project AI Agent"]
+  store --> linux["Linux browser client"]
+  store --> windows["Windows Flutter app"]
+  linux --> dashboard["Dashboard + widgets + hackathons"]
+  windows --> dashboard
+  dashboard --> privacy["Privacy controls"]
+  dashboard -. approved summaries only .-> aios["AiOS / Project AI Agent"]
 ```
 
 No screenshots, keystrokes, private messages, raw browser history, or full notes are sent to the agent. The bridge shares only approved summaries.
 
-## Run It
+## Run It On Linux
 
 ```powershell
 npm install
 npm run collector:dev
+npm run dev
 ```
 
-Native desktop:
+Open the local Vite URL in your browser. This is the Linux v1 app surface: no `.deb`, AppImage, Flatpak, or native Linux package required.
 
-```powershell
-cd flutter_app
-C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
-```
-
-Build and install the Windows app:
+## Install It On Windows
 
 ```powershell
 cd flutter_app
@@ -77,19 +73,26 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\instal
 
 After install, Windows Search should find **What Do You Do** from the Start Menu shortcut.
 
+For Windows development:
+
+```powershell
+cd flutter_app
+C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
+```
+
 ## Project Map
 
 ```text
 .
-├─ flutter_app/              native Flutter desktop/mobile client
-│  ├─ lib/src/               app shell, controller, APIs, models, theme
-│  ├─ test/                  layout, summary, parsing, settings tests
-│  └─ windows/install/       local Windows install + uninstall scripts
-├─ src/                      legacy web dashboard kept during migration
-├─ scripts/                  local collector and API helpers
-├─ data/                     local-only session, sync, and hackathon data
-├─ docs/screenshots/         README screenshots and GIF previews
-└─ projects/                 architecture notes and build plans
+|-- src/                      Linux/browser React dashboard
+|-- flutter_app/              Windows native Flutter app
+|   |-- lib/src/               app shell, controller, APIs, models, theme
+|   |-- test/                  layout, summary, parsing, settings tests
+|   `-- windows/install/       local Windows install + uninstall scripts
+|-- scripts/                  local collector and API helpers
+|-- data/                     local-only session, sync, and hackathon data
+|-- docs/screenshots/         README screenshots and GIF previews
+`-- projects/                 architecture notes and build plans
 ```
 
 ## Local APIs

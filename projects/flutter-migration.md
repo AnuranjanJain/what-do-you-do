@@ -1,27 +1,29 @@
-# Flutter Migration
+# Flutter Windows App
 
-The primary application UI now lives in `flutter_app/`.
+The native Windows application UI lives in `flutter_app/`.
 
-Flutter replaces the HTML/CSS/WebView interface with a natively compiled,
-canvas-rendered client for Windows, Android, and iOS. The local collector and
-privacy boundary remain unchanged.
+Flutter is the installed Windows app surface. The React/Vite browser dashboard
+remains the Linux v1 surface, so the two clients share the local collector and
+privacy boundary instead of one replacing the other.
 
 ## Reused system boundary
 
 ```text
-Windows activity signals
+Local activity signals
         |
         v
 Node local collector on 127.0.0.1:17321
         |
         +--> daily local JSON storage
         |
-        +--> Flutter Windows / Android / iOS client
+        +--> Windows Flutter app
+        |
+        +--> Linux browser client
         |
         +--> optional approved AiOS summaries
 ```
 
-The Flutter client currently uses:
+The Windows Flutter client currently uses:
 
 - `GET /health`
 - `GET /sessions?date=YYYY-MM-DD`
@@ -34,16 +36,16 @@ The Flutter client currently uses:
 No raw window title, screenshot, keystroke, message, or file content is sent to
 the UI.
 
-## Implemented Flutter screens
+## Implemented Windows app screens
 
-- Responsive desktop and mobile navigation
+- Responsive desktop navigation
 - Dashboard with real local metrics
 - Focus bar chart and activity mix chart
 - Date-aware activity timeline
 - Hackathon board
 - Privacy control center
 - Project AI Agent feature surface
-- Desktop and mobile widget previews
+- Desktop and widget previews
 - Runtime settings and light/dark mode
 
 ## Development
@@ -60,7 +62,7 @@ Run the collector from the repository root:
 npm run collector:dev
 ```
 
-Run Flutter:
+Run the Windows Flutter app:
 
 ```powershell
 cd flutter_app
@@ -82,15 +84,16 @@ flutter_app\build\windows\x64\runner\Release\
 Keep the entire Release directory together; the executable depends on the
 adjacent Flutter DLL and data directory.
 
-## Next migration work
+## Next Windows app work
 
 1. Move the collector into a bundled native sidecar.
 2. Add correction and note editing from Flutter.
 3. Add create/edit/delete forms for hackathons.
 4. Add approved-summary sync controls to the Flutter UI.
 5. Add native Windows notifications, tray behavior, and startup settings.
-6. Implement Android/iOS companion discovery instead of assuming loopback.
-7. Package and sign the Flutter Windows release.
+6. Package and sign the Flutter Windows release.
+7. Revisit Android/iOS as future companion clients after the Windows app is stable.
 
-The React/Tauri client remains in the repository as a migration reference. It
-should be retired after the Flutter client reaches feature parity.
+The React/Vite client remains in the repository as the Linux/browser client.
+The Tauri wrapper remains historical migration reference unless it is removed
+in a later cleanup.
