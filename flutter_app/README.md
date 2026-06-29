@@ -35,6 +35,10 @@ Install for Windows Search / Start Menu:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
 ```
 
+The installer copies the local collector into the app install directory and
+adds `start-collector.ps1`. The Settings screen can create Windows Startup
+shortcuts for the app and for this hidden collector launcher.
+
 The complete release folder is:
 
 ```text

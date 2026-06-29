@@ -46,7 +46,7 @@ the UI.
 - Privacy control center
 - Project AI Agent feature surface
 - Desktop and widget previews
-- Runtime settings and light/dark mode
+- Runtime settings, light/dark mode, and Windows startup service controls
 
 ## Development
 
@@ -75,6 +75,12 @@ Build Windows:
 C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
 ```
 
+Install Windows:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
+```
+
 The unpackaged Windows output is:
 
 ```text
@@ -84,13 +90,17 @@ flutter_app\build\windows\x64\runner\Release\
 Keep the entire Release directory together; the executable depends on the
 adjacent Flutter DLL and data directory.
 
+The installer also copies the local collector into the installed app directory
+and adds `start-collector.ps1`. Settings can create Windows Startup shortcuts
+for both the app and the hidden collector launcher.
+
 ## Next Windows app work
 
-1. Move the collector into a bundled native sidecar.
+1. Move the Node collector into a self-contained native sidecar.
 2. Add correction and note editing from Flutter.
 3. Add create/edit/delete forms for hackathons.
 4. Add approved-summary sync controls to the Flutter UI.
-5. Add native Windows notifications, tray behavior, and startup settings.
+5. Add native Windows notifications and tray behavior.
 6. Package and sign the Flutter Windows release.
 7. Revisit Android/iOS as future companion clients after the Windows app is stable.
 

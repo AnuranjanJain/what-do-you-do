@@ -1,13 +1,9 @@
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$workspaceRoot = Resolve-Path (Join-Path $repoRoot "..")
-$releaseDir = Join-Path $repoRoot "build\windows\x64\runner\Release"
-$collectorSourceDir = Join-Path $workspaceRoot "scripts\collector"
+$packageAppDir = Join-Path $PSScriptRoot "app"
 $exeName = "what_do_you_do.exe"
-$sourceExe = Join-Path $releaseDir $exeName
+$sourceExe = Join-Path $packageAppDir $exeName
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\What Do You Do"
-$collectorInstallDir = Join-Path $installDir "collector"
 $appVersion = "1.0.1"
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "What Do You Do.lnk"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
@@ -15,16 +11,7 @@ $startMenuShortcut = Join-Path $startMenuDir "What Do You Do.lnk"
 $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\What Do You Do Flutter"
 
 if (-not (Test-Path -LiteralPath $sourceExe)) {
-  throw "Release executable not found. Build first with: flutter build windows --release"
-}
-if (-not (Test-Path -LiteralPath $collectorSourceDir)) {
-  throw "Collector source directory not found at $collectorSourceDir"
-}
-
-$resolvedRelease = (Resolve-Path -LiteralPath $releaseDir).Path
-$resolvedRepo = (Resolve-Path -LiteralPath $repoRoot).Path
-if (-not $resolvedRelease.StartsWith($resolvedRepo, [StringComparison]::OrdinalIgnoreCase)) {
-  throw "Refusing to install from outside the Flutter app workspace."
+  throw "Release package is missing app\$exeName"
 }
 
 Get-Process what_do_you_do -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -35,14 +22,8 @@ Start-Sleep -Milliseconds 500
 
 Remove-Item -LiteralPath $installDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-Get-ChildItem -LiteralPath $releaseDir | ForEach-Object {
+Get-ChildItem -LiteralPath $packageAppDir | ForEach-Object {
   Copy-Item -LiteralPath $_.FullName -Destination $installDir -Recurse -Force
-}
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "start-collector.ps1") -Destination $installDir -Force
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "uninstall.ps1") -Destination $installDir -Force
-New-Item -ItemType Directory -Path $collectorInstallDir | Out-Null
-Get-ChildItem -LiteralPath $collectorSourceDir | ForEach-Object {
-  Copy-Item -LiteralPath $_.FullName -Destination $collectorInstallDir -Recurse -Force
 }
 
 $installedExe = Join-Path $installDir $exeName

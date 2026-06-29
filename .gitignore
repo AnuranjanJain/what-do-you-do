@@ -10,3 +10,4 @@ collector.err.log
 *.out.log
 *.err.log
 data/
+releases/

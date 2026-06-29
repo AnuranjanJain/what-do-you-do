@@ -8,26 +8,34 @@ import 'package:intl/intl.dart';
 import 'agent_desktop_api.dart';
 import 'collector_api.dart';
 import 'models.dart';
+import 'startup_manager.dart';
 
 class AppController extends ChangeNotifier {
   AppController({
     CollectorApi? api,
     AgentDesktopApi? agentApi,
     File? preferencesFile,
-  })
-    : _api = api ?? CollectorApi(),
-      _agentApi = agentApi ?? AgentDesktopApi(),
-      _preferencesFileOverride = preferencesFile;
+    StartupManager? startupManager,
+  }) : _api = api ?? CollectorApi(),
+       _agentApi = agentApi ?? AgentDesktopApi(),
+       _preferencesFileOverride = preferencesFile,
+       _startupManager = startupManager ?? WindowsStartupManager();
 
   final CollectorApi _api;
   final AgentDesktopApi _agentApi;
   final File? _preferencesFileOverride;
+  final StartupManager _startupManager;
   Timer? _refreshTimer;
 
   bool darkMode = false;
+  bool launchAppAtLogin = false;
+  bool launchCollectorAtLogin = false;
+  bool startupAvailable = false;
+  bool collectorStartupAvailable = false;
   bool loading = true;
   bool collectorOnline = false;
   String message = 'Connecting to the local collector...';
+  String startupMessage = 'Checking startup services...';
   String selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   String activeDate = '';
   List<String> availableDates = const [];
@@ -41,6 +49,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _loadPreferences();
+    await _loadStartupState();
     await refresh();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 4),
@@ -114,6 +123,34 @@ class AppController extends ChangeNotifier {
     unawaited(_savePreferences());
   }
 
+  Future<void> setLaunchAppAtLogin(bool enabled) async {
+    launchAppAtLogin = enabled;
+    startupMessage = enabled
+        ? 'Enabling app launch at sign-in...'
+        : 'Disabling app launch at sign-in...';
+    notifyListeners();
+    try {
+      await _startupManager.setLaunchApp(enabled);
+    } catch (error) {
+      startupMessage = _friendlyStartupError(error);
+    }
+    await _loadStartupState();
+  }
+
+  Future<void> setLaunchCollectorAtLogin(bool enabled) async {
+    launchCollectorAtLogin = enabled;
+    startupMessage = enabled
+        ? 'Enabling local collector at sign-in...'
+        : 'Disabling local collector at sign-in...';
+    notifyListeners();
+    try {
+      await _startupManager.setLaunchCollector(enabled);
+    } catch (error) {
+      startupMessage = _friendlyStartupError(error);
+    }
+    await _loadStartupState();
+  }
+
   Future<void> _loadPreferences() async {
     try {
       final file = _preferencesFile();
@@ -125,6 +162,34 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       // Corrupt preferences should never block the local dashboard.
     }
+  }
+
+  Future<void> _loadStartupState() async {
+    try {
+      final state = await _startupManager.load();
+      startupAvailable = state.available;
+      collectorStartupAvailable = state.collectorAvailable;
+      launchAppAtLogin = state.launchApp;
+      launchCollectorAtLogin = state.launchCollector;
+      startupMessage = state.message;
+    } catch (error) {
+      startupAvailable = false;
+      collectorStartupAvailable = false;
+      launchAppAtLogin = false;
+      launchCollectorAtLogin = false;
+      startupMessage = _friendlyStartupError(error);
+    }
+    notifyListeners();
+  }
+
+  String _friendlyStartupError(Object error) {
+    final message = error is Exception || error is Error
+        ? error.toString().replaceFirst(
+            RegExp(r'^(Exception|StateError): '),
+            '',
+          )
+        : 'Startup settings are unavailable.';
+    return message.isEmpty ? 'Startup settings are unavailable.' : message;
   }
 
   Future<void> _savePreferences() async {
@@ -139,7 +204,8 @@ class AppController extends ChangeNotifier {
 
   File _preferencesFile() {
     if (_preferencesFileOverride case final override?) return override;
-    final base = Platform.environment['LOCALAPPDATA'] ??
+    final base =
+        Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
         Directory.current.path;
     return File('$base\\What Do You Do\\settings.json');

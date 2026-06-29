@@ -73,6 +73,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\instal
 
 After install, Windows Search should find **What Do You Do** from the Start Menu shortcut.
 
+In **Settings**, Windows users can enable:
+
+- launch the app at sign-in
+- start the packaged local collector at sign-in
+
 For Windows development:
 
 ```powershell

@@ -1,90 +1,101 @@
 # Desktop Build Notes
 
-The project now has a Tauri desktop wrapper in `src-tauri`.
+The supported installed desktop app is the Flutter Windows client in
+`flutter_app/`. The React/Vite browser client remains the Linux v1 surface.
+The older Tauri wrapper is historical migration reference only.
 
-## Current status
+## Build and install
 
-The web app builds successfully with:
+Build the Windows release:
+
+```powershell
+cd flutter_app
+C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
+```
+
+Install into the current Windows user profile:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
+```
+
+Installed location:
+
+```text
+%LOCALAPPDATA%\Programs\What Do You Do\
+```
+
+## Installed files
+
+The installer copies:
+
+- `what_do_you_do.exe`
+- `flutter_windows.dll`
+- Flutter `data/`
+- `start-collector.ps1`
+- `collector/local-activity-collector.mjs`
+- `collector/get-windows-activity.ps1`
+
+It also creates Desktop and Start Menu shortcuts and registers the app in the
+current user's Windows Installed Apps list.
+
+## Startup services
+
+The Settings screen can create user Startup folder shortcuts for:
+
+- launching the app at sign-in
+- launching the packaged local collector at sign-in
+
+The collector launcher is hidden, checks whether `http://127.0.0.1:17321/health`
+is already online, and starts Node only when needed.
+
+Runtime data:
+
+```text
+%LOCALAPPDATA%\What Do You Do\data
+%LOCALAPPDATA%\What Do You Do\logs
+```
+
+## Release artifact
+
+The distributable release should zip the full Flutter release directory plus
+the install helper files. The `.exe` alone is included for inspection, but the
+ZIP is the usable app package because the executable requires the adjacent
+Flutter DLL and data directory.
+
+Recommended asset name:
+
+```text
+What-Do-You-Do-Windows-v1.0.1.zip
+```
+
+Release ZIP layout:
+
+```text
+Install-WhatDoYouDo.ps1
+app/
+|-- what_do_you_do.exe
+|-- flutter_windows.dll
+|-- data/
+|-- start-collector.ps1
+|-- uninstall.ps1
+`-- collector/
+```
+
+## Validation checklist
 
 ```powershell
 npm run build
+cd flutter_app
+C:\Users\anura\development\flutter\bin\flutter.bat analyze
+C:\Users\anura\development\flutter\bin\flutter.bat test
+C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
 ```
 
-The Tauri project is scaffolded and detected by:
+Then verify:
 
-```powershell
-npx tauri info
-```
-
-The desktop runtime now includes:
-
-- Tauri commands for native runtime status
-- Automatic collector startup attempt when the desktop UI mounts
-- Start and Stop collector controls in Settings
-- Detection of externally running collectors
-- Managed collector PID reporting
-- Desktop storage under the OS app-data directory
-- Managed collector shutdown when the desktop window is destroyed
-- Browser fallback that leaves the web dashboard unchanged
-
-The current collector launcher uses the installed Node.js runtime and the source collector script. A distributable release must replace this with a bundled sidecar executable before public installation packages are published.
-
-## Local toolchain status
-
-Installed on June 14, 2026:
-
-- Rust `1.96.0`
-- Cargo `1.96.0`
-- rustup `1.29.0`
-- Visual Studio Build Tools 2022
-- Desktop development with C++ / MSVC
-- Windows SDK
-
-Run:
-
-```powershell
-npm run desktop:dev
-npm run desktop:build
-```
-
-Validation completed:
-
-```powershell
-npm run build
-cargo fmt --all -- --check
-npx tauri info
-npm run desktop:build
-```
-
-The release build pins `brotli-decompressor` `5.0.1` and `alloc-stdlib` `0.2.2`
-in `Cargo.lock`. Those releases use the same allocator API and avoid the
-incompatible transitive version combination resolved by the newer packages.
-
-## Release artifacts
-
-Successful Windows builds produce:
-
-- App executable: `src-tauri/target/release/what-do-you-do.exe`
-- NSIS installer: `src-tauri/target/release/bundle/nsis/What Do You Do_0.1.0_x64-setup.exe`
-- MSI installer: `src-tauri/target/release/bundle/msi/What Do You Do_0.1.0_x64_en-US.msi`
-
-## Desktop app settings
-
-- Product name: What Do You Do
-- Identifier: `com.whatdoyoudo.desktop`
-- Default window: 1280x820
-- Minimum window: 1024x700
-- Frontend build output: `dist`
-- Dev server: `http://127.0.0.1:5173`
-- Collector API: `http://127.0.0.1:17321`
-- Desktop data: OS app-data directory under `com.whatdoyoudo.desktop`
-
-## Distribution follow-up
-
-Before producing a public installer:
-
-1. Convert the collector into a Tauri sidecar executable.
-2. Bundle the sidecar for the Windows target triple.
-3. Remove the release-time dependency on Node.js and the source checkout.
-4. Add a system tray and optional start-on-login setting.
-5. Build, sign, install, and test the release bundle on a clean Windows account.
+- installed app launches
+- packaged collector files exist
+- `GET http://127.0.0.1:17321/health` returns `200`
+- Settings shows both startup toggles

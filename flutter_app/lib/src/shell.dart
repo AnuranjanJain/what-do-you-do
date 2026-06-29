@@ -1667,6 +1667,32 @@ class SettingsPage extends StatelessWidget {
               onChanged: (_) => controller.toggleTheme(),
             ),
             const Divider(height: 1),
+            SwitchListTile(
+              secondary: const Icon(Icons.rocket_launch_outlined),
+              title: const Text('Launch app at sign-in'),
+              subtitle: Text(
+                controller.startupAvailable
+                    ? 'Open What Do You Do automatically after Windows login'
+                    : controller.startupMessage,
+              ),
+              value: controller.launchAppAtLogin,
+              onChanged: controller.startupAvailable
+                  ? controller.setLaunchAppAtLogin
+                  : null,
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              secondary: const Icon(Icons.sensors_outlined),
+              title: const Text('Start local collector at sign-in'),
+              subtitle: Text(controller.startupMessage),
+              value: controller.launchCollectorAtLogin,
+              onChanged:
+                  controller.startupAvailable &&
+                      controller.collectorStartupAvailable
+                  ? controller.setLaunchCollectorAtLogin
+                  : null,
+            ),
+            const Divider(height: 1),
             _SettingRow(
               label: 'Collector',
               value: controller.collectorOnline ? 'Online' : 'Offline',

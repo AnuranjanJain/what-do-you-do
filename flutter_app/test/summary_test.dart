@@ -5,6 +5,7 @@ import 'package:what_do_you_do/src/agent_desktop_api.dart';
 import 'package:what_do_you_do/src/app_controller.dart';
 import 'package:what_do_you_do/src/collector_api.dart';
 import 'package:what_do_you_do/src/models.dart';
+import 'package:what_do_you_do/src/startup_manager.dart';
 
 void main() {
   test('dashboard summary separates focus and idle time', () {
@@ -112,6 +113,42 @@ void main() {
 
     expect(await preferencesFile.readAsString(), contains('"darkMode":true'));
   });
+
+  test('startup preference state is loaded from manager', () async {
+    final controller = AppController(
+      api: _FakeCollectorApi(),
+      agentApi: _FakeAgentDesktopApi(),
+      startupManager: _FakeStartupManager(),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+
+    expect(controller.startupAvailable, isTrue);
+    expect(controller.collectorStartupAvailable, isTrue);
+    expect(controller.launchAppAtLogin, isTrue);
+    expect(controller.launchCollectorAtLogin, isFalse);
+  });
+
+  test('windows startup manager reads shortcut state', () async {
+    if (!Platform.isWindows) return;
+
+    final tempDir = await Directory.systemTemp.createTemp('wdyd-startup-');
+    addTearDown(() => tempDir.delete(recursive: true));
+    await File('${tempDir.path}\\What Do You Do.lnk').writeAsString('');
+    final collectorLauncher = File('${tempDir.path}\\start-collector.ps1');
+    await collectorLauncher.writeAsString('');
+
+    final state = await WindowsStartupManager(
+      startupDirectory: tempDir,
+      collectorLauncherFile: collectorLauncher,
+    ).load();
+
+    expect(state.available, isTrue);
+    expect(state.collectorAvailable, isTrue);
+    expect(state.launchApp, isTrue);
+    expect(state.launchCollector, isFalse);
+  });
 }
 
 class _FakeCollectorApi extends CollectorApi {
@@ -135,4 +172,15 @@ class _FakeAgentDesktopApi extends AgentDesktopApi {
   @override
   Future<AgentDesktopSnapshot> snapshot() async =>
       AgentDesktopSnapshot.disconnected('Test agent disconnected.');
+}
+
+class _FakeStartupManager extends StartupManager {
+  @override
+  Future<StartupState> load() async => const StartupState(
+    available: true,
+    collectorAvailable: true,
+    launchApp: true,
+    launchCollector: false,
+    message: 'Startup test ready.',
+  );
 }
