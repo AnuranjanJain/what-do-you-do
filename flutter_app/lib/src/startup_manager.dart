@@ -5,6 +5,7 @@ class StartupState {
     required this.available,
     required this.collectorAvailable,
     required this.launchApp,
+    required this.launchAppHidden,
     required this.launchCollector,
     required this.message,
   });
@@ -12,6 +13,7 @@ class StartupState {
   final bool available;
   final bool collectorAvailable;
   final bool launchApp;
+  final bool launchAppHidden;
   final bool launchCollector;
   final String message;
 }
@@ -21,11 +23,12 @@ class StartupManager {
     available: false,
     collectorAvailable: false,
     launchApp: false,
+    launchAppHidden: false,
     launchCollector: false,
     message: 'Startup settings are only available on Windows.',
   );
 
-  Future<void> setLaunchApp(bool enabled) async {
+  Future<void> setLaunchApp(bool enabled, {bool hidden = false}) async {
     throw UnsupportedError('Startup settings are only available on Windows.');
   }
 
@@ -66,6 +69,8 @@ class WindowsStartupManager extends StartupManager {
       available: true,
       collectorAvailable: collectorAvailable,
       launchApp: await appShortcut.exists(),
+      launchAppHidden:
+          await appShortcut.exists() && await _shortcutUsesHiddenMode(),
       launchCollector: await collectorShortcut.exists(),
       message: collectorAvailable
           ? 'Startup services can launch the app and local collector.'
@@ -74,7 +79,7 @@ class WindowsStartupManager extends StartupManager {
   }
 
   @override
-  Future<void> setLaunchApp(bool enabled) async {
+  Future<void> setLaunchApp(bool enabled, {bool hidden = false}) async {
     final startupDir = _startupDir();
     final shortcutPath = '${startupDir.path}\\$_appShortcutName';
     if (!enabled) {
@@ -87,7 +92,7 @@ class WindowsStartupManager extends StartupManager {
     await _createShortcut(
       shortcutPath: shortcutPath,
       targetPath: executable.path,
-      arguments: '',
+      arguments: hidden ? '--hidden' : '',
       workingDirectory: executable.parent.path,
       description: 'Launch What Do You Do at sign-in',
     );
@@ -134,6 +139,28 @@ class WindowsStartupManager extends StartupManager {
   File _collectorLauncher() {
     if (collectorLauncherFile case final file?) return file;
     return File('${_executable().parent.path}\\start-collector.ps1');
+  }
+
+  Future<bool> _shortcutUsesHiddenMode() async {
+    final startupDir = _startupDir();
+    final shortcutPath = '${startupDir.path}\\$_appShortcutName';
+    final script =
+        '''
+\$shell = New-Object -ComObject WScript.Shell
+\$shortcut = \$shell.CreateShortcut('${shortcutPath.replaceAll("'", "''")}')
+\$shortcut.Arguments
+''';
+
+    final result = await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-Command',
+      script,
+    ]);
+
+    if (result.exitCode != 0) return false;
+    return result.stdout.toString().contains('--hidden');
   }
 
   Future<void> _createShortcut({

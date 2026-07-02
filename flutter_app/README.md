@@ -37,7 +37,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\instal
 
 The installer copies the local collector into the app install directory and
 adds `start-collector.ps1`. The Settings screen can create Windows Startup
-shortcuts for the app and for this hidden collector launcher.
+shortcuts for the app and for this hidden collector launcher. The Windows app
+also keeps a tray icon: closing or minimizing hides the window, and Settings
+contains the explicit app exit action.
 
 The complete release folder is:
 

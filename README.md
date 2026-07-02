@@ -76,7 +76,9 @@ After install, Windows Search should find **What Do You Do** from the Start Menu
 In **Settings**, Windows users can enable:
 
 - launch the app at sign-in
+- open the app in the background tray at sign-in
 - start the packaged local collector at sign-in
+- hide the window to the tray or fully exit the app
 
 For Windows development:
 

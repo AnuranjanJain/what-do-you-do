@@ -127,6 +127,7 @@ void main() {
     expect(controller.startupAvailable, isTrue);
     expect(controller.collectorStartupAvailable, isTrue);
     expect(controller.launchAppAtLogin, isTrue);
+    expect(controller.launchAppHiddenAtLogin, isTrue);
     expect(controller.launchCollectorAtLogin, isFalse);
   });
 
@@ -147,6 +148,7 @@ void main() {
     expect(state.available, isTrue);
     expect(state.collectorAvailable, isTrue);
     expect(state.launchApp, isTrue);
+    expect(state.launchAppHidden, isFalse);
     expect(state.launchCollector, isFalse);
   });
 }
@@ -180,6 +182,7 @@ class _FakeStartupManager extends StartupManager {
     available: true,
     collectorAvailable: true,
     launchApp: true,
+    launchAppHidden: true,
     launchCollector: false,
     message: 'Startup test ready.',
   );

@@ -39,6 +39,9 @@ class Win32Window {
   // Show the current window. Returns true if the window was successfully shown.
   bool Show();
 
+  // Show or hide the current window with an explicit Win32 command.
+  bool ShowCommand(int command);
+
   // Release OS resources associated with window.
   void Destroy();
 

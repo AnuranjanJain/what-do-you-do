@@ -1682,6 +1682,18 @@ class SettingsPage extends StatelessWidget {
             ),
             const Divider(height: 1),
             SwitchListTile(
+              secondary: const Icon(Icons.system_security_update_outlined),
+              title: const Text('Open in background at sign-in'),
+              subtitle: const Text(
+                'Start hidden in the tray until you open it from the tray icon',
+              ),
+              value: controller.launchAppHiddenAtLogin,
+              onChanged: controller.startupAvailable
+                  ? controller.setLaunchAppHiddenAtLogin
+                  : null,
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
               secondary: const Icon(Icons.sensors_outlined),
               title: const Text('Start local collector at sign-in'),
               subtitle: Text(controller.startupMessage),
@@ -1691,6 +1703,20 @@ class SettingsPage extends StatelessWidget {
                       controller.collectorStartupAvailable
                   ? controller.setLaunchCollectorAtLogin
                   : null,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.keyboard_arrow_down_outlined),
+              title: const Text('Hide to tray now'),
+              subtitle: const Text('Keep WDYD running without an open window'),
+              onTap: controller.hideToTray,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.power_settings_new_outlined),
+              title: const Text('Exit What Do You Do'),
+              subtitle: const Text('Fully quit the app instead of hiding it'),
+              onTap: controller.exitApp,
             ),
             const Divider(height: 1),
             _SettingRow(

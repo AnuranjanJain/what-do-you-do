@@ -44,7 +44,12 @@ current user's Windows Installed Apps list.
 The Settings screen can create user Startup folder shortcuts for:
 
 - launching the app at sign-in
+- launching the app hidden in the tray at sign-in
 - launching the packaged local collector at sign-in
+
+The native Windows runner keeps a tray icon alive. Closing or minimizing the
+window hides it instead of quitting; the Settings screen exposes the explicit
+exit action.
 
 The collector launcher is hidden, checks whether `http://127.0.0.1:17321/health`
 is already online, and starts Node only when needed.
@@ -98,4 +103,4 @@ Then verify:
 - installed app launches
 - packaged collector files exist
 - `GET http://127.0.0.1:17321/health` returns `200`
-- Settings shows both startup toggles
+- Settings shows startup, background tray, collector, hide, and exit controls

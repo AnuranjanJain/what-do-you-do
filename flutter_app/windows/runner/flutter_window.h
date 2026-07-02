@@ -5,6 +5,8 @@
 #include <flutter/flutter_view_controller.h>
 
 #include <memory>
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
 
 #include "win32_window.h"
 
@@ -12,7 +14,8 @@
 class FlutterWindow : public Win32Window {
  public:
   // Creates a new FlutterWindow hosting a Flutter view running |project|.
-  explicit FlutterWindow(const flutter::DartProject& project);
+  explicit FlutterWindow(const flutter::DartProject& project,
+                         bool start_hidden = false);
   virtual ~FlutterWindow();
 
  protected:
@@ -28,6 +31,21 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      lifecycle_channel_;
+
+  bool start_hidden_ = false;
+  bool exiting_ = false;
+  bool tray_icon_added_ = false;
+  NOTIFYICONDATA notify_icon_data_{};
+
+  void AddTrayIcon();
+  void RemoveTrayIcon();
+  void HideToTray();
+  void ShowFromTray();
+  void ExitApplication();
+  void RegisterLifecycleChannel();
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

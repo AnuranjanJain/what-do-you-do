@@ -9,6 +9,7 @@ import 'agent_desktop_api.dart';
 import 'collector_api.dart';
 import 'models.dart';
 import 'startup_manager.dart';
+import 'window_lifecycle.dart';
 
 class AppController extends ChangeNotifier {
   AppController({
@@ -16,19 +17,23 @@ class AppController extends ChangeNotifier {
     AgentDesktopApi? agentApi,
     File? preferencesFile,
     StartupManager? startupManager,
+    WindowLifecycle? windowLifecycle,
   }) : _api = api ?? CollectorApi(),
        _agentApi = agentApi ?? AgentDesktopApi(),
        _preferencesFileOverride = preferencesFile,
-       _startupManager = startupManager ?? WindowsStartupManager();
+       _startupManager = startupManager ?? WindowsStartupManager(),
+       _windowLifecycle = windowLifecycle ?? const WindowLifecycle();
 
   final CollectorApi _api;
   final AgentDesktopApi _agentApi;
   final File? _preferencesFileOverride;
   final StartupManager _startupManager;
+  final WindowLifecycle _windowLifecycle;
   Timer? _refreshTimer;
 
   bool darkMode = false;
   bool launchAppAtLogin = false;
+  bool launchAppHiddenAtLogin = false;
   bool launchCollectorAtLogin = false;
   bool startupAvailable = false;
   bool collectorStartupAvailable = false;
@@ -130,7 +135,24 @@ class AppController extends ChangeNotifier {
         : 'Disabling app launch at sign-in...';
     notifyListeners();
     try {
-      await _startupManager.setLaunchApp(enabled);
+      await _startupManager.setLaunchApp(
+        enabled,
+        hidden: launchAppHiddenAtLogin,
+      );
+    } catch (error) {
+      startupMessage = _friendlyStartupError(error);
+    }
+    await _loadStartupState();
+  }
+
+  Future<void> setLaunchAppHiddenAtLogin(bool enabled) async {
+    launchAppHiddenAtLogin = enabled;
+    startupMessage = enabled
+        ? 'Enabling tray startup mode...'
+        : 'Disabling tray startup mode...';
+    notifyListeners();
+    try {
+      await _startupManager.setLaunchApp(launchAppAtLogin, hidden: enabled);
     } catch (error) {
       startupMessage = _friendlyStartupError(error);
     }
@@ -149,6 +171,14 @@ class AppController extends ChangeNotifier {
       startupMessage = _friendlyStartupError(error);
     }
     await _loadStartupState();
+  }
+
+  Future<void> hideToTray() async {
+    await _windowLifecycle.hideToTray();
+  }
+
+  Future<void> exitApp() async {
+    await _windowLifecycle.exit();
   }
 
   Future<void> _loadPreferences() async {
@@ -170,12 +200,14 @@ class AppController extends ChangeNotifier {
       startupAvailable = state.available;
       collectorStartupAvailable = state.collectorAvailable;
       launchAppAtLogin = state.launchApp;
+      launchAppHiddenAtLogin = state.launchAppHidden;
       launchCollectorAtLogin = state.launchCollector;
       startupMessage = state.message;
     } catch (error) {
       startupAvailable = false;
       collectorStartupAvailable = false;
       launchAppAtLogin = false;
+      launchAppHiddenAtLogin = false;
       launchCollectorAtLogin = false;
       startupMessage = _friendlyStartupError(error);
     }
