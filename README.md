@@ -37,6 +37,12 @@
 
 Both read the same local collector data, keep raw activity on-device, and can optionally talk to AiOS / Project AI Agent through loopback-only approved summaries.
 
+WDYD v2 keeps the boundary clean:
+
+- **AiOS owns Email Intelligence**: Gmail OAuth, encrypted tokens, local email sync, Ollama analysis, semantic search, and daily/weekly planning.
+- **AiOS owns Command Planner rows**: hackathons, repo work, email tasks, learning videos, goals, work done, work left, and next questions.
+- **WDYD displays the result**: planner cards, today/week/month command rows, urgent email counts, deadlines, waiting-for, suggestions, and focus summaries.
+
 ## How It Works
 
 ```mermaid
@@ -49,6 +55,8 @@ flowchart LR
   windows --> dashboard
   dashboard --> privacy["Privacy controls"]
   dashboard -. approved summaries only .-> aios["AiOS / Project AI Agent"]
+  aios --> planner["Planner summaries + command rows"]
+  planner --> dashboard
 ```
 
 No screenshots, keystrokes, private messages, raw browser history, or full notes are sent to the agent. The bridge shares only approved summaries.
@@ -122,6 +130,8 @@ GET /api/workers
 GET /api/hackathons
 GET /api/placements
 GET /api/neopat
+GET /api/intelligence/today
+GET /api/intelligence/search?q=internship
 ```
 
 ## Privacy Promise

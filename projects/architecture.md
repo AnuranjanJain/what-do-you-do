@@ -5,9 +5,13 @@
 `What Do You Do` and `Project AI Agent` should be separate but connected apps.
 
 - `What Do You Do`: digital wellbeing, activity detection, time awareness, local timeline, privacy controls.
-- `Project AI Agent`: reminders, memory, email intelligence, job tracking, automation, assistant actions.
+- `Project AI Agent` / AiOS: reminders, memory, email intelligence, job tracking, automation, assistant actions.
 
 The digital wellbeing app should work by itself. The assistant features should unlock only after `Project AI Agent` is installed and explicitly connected by the user.
+
+For WDYD v2, Gmail/OAuth/AI planning does **not** live inside WDYD. AiOS owns Google accounts, encrypted OAuth tokens, Gmail sync, local Ollama analysis, semantic search, daily plans, weekly plans, smart suggestions, and command-planner rows for hackathons, repos, videos, email tasks, and goals. WDYD consumes only the approved loopback summaries for dashboard cards and the Planner page.
+
+The working product prompt for this real-life planner is saved in `projects/real-life-planner-prompt.md`.
 
 Platform split for v1:
 
@@ -47,12 +51,14 @@ flowchart TD
     M --> P["Email insights"]
     M --> Q["Job tracking"]
     M --> R["Suggested actions"]
+    M --> U["Daily / weekly AI plans"]
 
     N --> S["Desktop and mobile widgets"]
     O --> S
     P --> S
     Q --> S
     R --> S
+    U --> S
 
     S --> T["User reviews, edits, deletes, or acts"]
     T --> E

@@ -122,6 +122,29 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> answerPlanningQuestion(
+    PlanningQuestion question,
+    String answer,
+  ) async {
+    final trimmed = answer.trim();
+    if (trimmed.isEmpty) return;
+    message = 'Saving progress for ${question.title}...';
+    notifyListeners();
+    try {
+      await _agentApi.answerPlanningQuestion(
+        eventId: question.eventId,
+        answer: trimmed,
+      );
+      message = 'Progress saved to AiOS.';
+      await refresh(silent: true);
+    } catch (error) {
+      message = error is Exception
+          ? error.toString().replaceFirst('Exception: ', '')
+          : 'Could not save progress to AiOS.';
+      notifyListeners();
+    }
+  }
+
   void toggleTheme() {
     darkMode = !darkMode;
     notifyListeners();

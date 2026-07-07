@@ -50,6 +50,131 @@ void main() {
           'opportunities': 94,
         },
         'plan': {'summary': 'Handle interview or deadline work.'},
+        'intelligence': {
+          'accounts': 2,
+          'unread_emails': 7,
+          'urgent_emails': 3,
+          'today': {
+            'summary': '3 urgent email signals.',
+            'items': [
+              {'time': '08:30', 'title': 'Reply to Client A'},
+            ],
+          },
+          'weekly': {
+            'summary': 'Local weekly plan.',
+            'items': [
+              {'day': 'Monday', 'focus': 'Project work'},
+            ],
+          },
+          'suggestions': [
+            {'title': 'Follow up on internship email'},
+          ],
+          'deadlines': [
+            {'summary': 'Finish dashboard by Friday'},
+          ],
+          'waiting_for': [
+            {'summary': 'Client A reply'},
+          ],
+          'planning_events': {
+            'events': [
+              {
+                'id': 7,
+                'event_type': 'hackathon',
+                'source': 'hackathon',
+                'title': 'Build FlightIQ demo',
+                'project': 'FlightIQ',
+                'deadline': '2026-06-21T09:00:00',
+                'planned_start': '2026-06-19T09:00:00',
+                'planned_minutes': 90,
+                'status': 'planned',
+                'work_done': 'Repo initialized.',
+                'work_left': 'Finish dashboard and video.',
+                'repo_url': 'https://github.com/anura/flightiq',
+                'repo_latest_activity': '2026-06-18: add dashboard',
+                'next_question': 'What changed in FlightIQ?',
+              },
+            ],
+            'agenda': {
+              'today': [],
+              'week': [
+                {
+                  'id': 7,
+                  'event_type': 'hackathon',
+                  'source': 'hackathon',
+                  'title': 'Build FlightIQ demo',
+                  'project': 'FlightIQ',
+                  'deadline': '2026-06-21T09:00:00',
+                  'planned_start': '2026-06-19T09:00:00',
+                  'planned_minutes': 90,
+                  'status': 'planned',
+                  'work_done': 'Repo initialized.',
+                  'work_left': 'Finish dashboard and video.',
+                  'repo_url': 'https://github.com/anura/flightiq',
+                  'repo_latest_activity': '2026-06-18: add dashboard',
+                  'next_question': 'What changed in FlightIQ?',
+                },
+              ],
+              'month': [
+                {
+                  'id': 7,
+                  'event_type': 'hackathon',
+                  'source': 'hackathon',
+                  'title': 'Build FlightIQ demo',
+                  'project': 'FlightIQ',
+                  'deadline': '2026-06-21T09:00:00',
+                  'planned_start': '2026-06-19T09:00:00',
+                  'planned_minutes': 90,
+                  'status': 'planned',
+                  'work_done': 'Repo initialized.',
+                  'work_left': 'Finish dashboard and video.',
+                  'repo_url': 'https://github.com/anura/flightiq',
+                  'repo_latest_activity': '2026-06-18: add dashboard',
+                  'next_question': 'What changed in FlightIQ?',
+                },
+              ],
+            },
+            'plan_blocks': {
+              'today': [],
+              'week': [
+                {
+                  'event_id': 7,
+                  'title': 'Build FlightIQ demo',
+                  'project': 'FlightIQ',
+                  'event_type': 'hackathon',
+                  'start': '2026-06-19T09:00:00',
+                  'duration_minutes': 90,
+                  'deadline': '2026-06-21T09:00:00',
+                  'next_action': 'Finish dashboard and video.',
+                  'status': 'planned',
+                },
+              ],
+              'month': [
+                {
+                  'event_id': 7,
+                  'title': 'Build FlightIQ demo',
+                  'project': 'FlightIQ',
+                  'event_type': 'hackathon',
+                  'start': '2026-06-19T09:00:00',
+                  'duration_minutes': 90,
+                  'deadline': '2026-06-21T09:00:00',
+                  'next_action': 'Finish dashboard and video.',
+                  'status': 'planned',
+                },
+              ],
+            },
+            'question_queue': [
+              {
+                'event_id': 7,
+                'question': 'What changed in FlightIQ?',
+                'title': 'Build FlightIQ demo',
+                'project': 'FlightIQ',
+                'event_type': 'hackathon',
+                'status': 'planned',
+                'deadline': '2026-06-21T09:00:00',
+              },
+            ],
+          },
+        },
         'latest_opportunity': {'title': 'Backend Intern Opening'},
         'latest_activity': {'agent_summary': 'Focus drift detected.'},
         'reminders': [
@@ -94,6 +219,29 @@ void main() {
     expect(snapshot.neopat, 2);
     expect(snapshot.wellbeingMinutes, 49);
     expect(snapshot.latestOpportunityTitle, 'Backend Intern Opening');
+    expect(snapshot.intelligence.accounts, 2);
+    expect(snapshot.intelligence.urgentEmails, 3);
+    expect(snapshot.intelligence.todayItems.single, 'Reply to Client A');
+    expect(snapshot.intelligence.weeklyItems.single, 'Project work');
+    expect(
+      snapshot.intelligence.planningEvents.single.title,
+      'Build FlightIQ demo',
+    );
+    expect(snapshot.intelligence.planningEvents.single.eventType, 'hackathon');
+    expect(
+      snapshot.intelligence.planningWeek.single.title,
+      'Build FlightIQ demo',
+    );
+    expect(snapshot.intelligence.planningMonth.single.project, 'FlightIQ');
+    expect(snapshot.intelligence.planWeek.single.durationMinutes, 90);
+    expect(
+      snapshot.intelligence.planMonth.single.nextAction,
+      'Finish dashboard and video.',
+    );
+    expect(
+      snapshot.intelligence.questionQueue.single.question,
+      'What changed in FlightIQ?',
+    );
   });
 
   test('theme preference is saved locally', () async {
@@ -112,6 +260,35 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
     expect(await preferencesFile.readAsString(), contains('"darkMode":true'));
+  });
+
+  test('planner question answers are sent to AiOS', () async {
+    final agentApi = _FakeAgentDesktopApi();
+    final controller = AppController(
+      api: _FakeCollectorApi(),
+      agentApi: agentApi,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.answerPlanningQuestion(
+      const PlanningQuestion(
+        eventId: 7,
+        question: 'What changed?',
+        title: 'Build FlightIQ demo',
+        project: 'FlightIQ',
+        eventType: 'hackathon',
+        status: 'planned',
+        deadline: '',
+      ),
+      'Finished the repo setup and wrote notes.',
+    );
+
+    expect(agentApi.answeredEventId, 7);
+    expect(agentApi.answer, 'Finished the repo setup and wrote notes.');
+    expect(
+      controller.message,
+      'No activity recorded for ${controller.selectedDate}.',
+    );
   });
 
   test('startup preference state is loaded from manager', () async {
@@ -171,9 +348,21 @@ class _FakeCollectorApi extends CollectorApi {
 }
 
 class _FakeAgentDesktopApi extends AgentDesktopApi {
+  int? answeredEventId;
+  String? answer;
+
   @override
   Future<AgentDesktopSnapshot> snapshot() async =>
       AgentDesktopSnapshot.disconnected('Test agent disconnected.');
+
+  @override
+  Future<void> answerPlanningQuestion({
+    required int eventId,
+    required String answer,
+  }) async {
+    answeredEventId = eventId;
+    this.answer = answer;
+  }
 }
 
 class _FakeStartupManager extends StartupManager {

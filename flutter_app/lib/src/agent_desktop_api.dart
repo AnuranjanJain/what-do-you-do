@@ -31,6 +31,19 @@ class AgentDesktopApi {
     );
   }
 
+  Future<void> answerPlanningQuestion({
+    required int eventId,
+    required String answer,
+  }) async {
+    final pairing = await _discoverPairing();
+    await _request(
+      pairing,
+      'PATCH',
+      '/api/planning-events/$eventId',
+      body: {'progress_note': answer},
+    );
+  }
+
   Future<_Pairing> _discoverPairing() async {
     for (final baseUrl in _candidateBaseUrls()) {
       try {
@@ -60,12 +73,25 @@ class AgentDesktopApi {
   }
 
   Future<Map<String, dynamic>> _get(_Pairing pairing, String path) async {
-    final response = await _client
-        .get(
-          Uri.parse('${pairing.baseUrl}$path'),
-          headers: {'X-AiOS-Token': pairing.token},
-        )
-        .timeout(const Duration(seconds: 4));
+    return _request(pairing, 'GET', path);
+  }
+
+  Future<Map<String, dynamic>> _request(
+    _Pairing pairing,
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final uri = Uri.parse('${pairing.baseUrl}$path');
+    final headers = {
+      'X-AiOS-Token': pairing.token,
+      if (body != null) 'Content-Type': 'application/json',
+    };
+    final response = await switch (method) {
+      'PATCH' => _client.patch(uri, headers: headers, body: jsonEncode(body)),
+      'POST' => _client.post(uri, headers: headers, body: jsonEncode(body)),
+      _ => _client.get(uri, headers: headers),
+    }.timeout(const Duration(seconds: 4));
 
     if (response.statusCode == 401) {
       throw Exception('AiOS Desktop is locked.');
