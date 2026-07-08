@@ -59,15 +59,15 @@ void main() {
       await tester.pumpAndSettle();
       final pageScroll = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
-        find.text('Today 1'),
+        find.textContaining('Today plan blocks'),
         500,
         scrollable: pageScroll,
       );
-      expect(find.text('Today 1'), findsOneWidget);
-      expect(find.text('Week 1'), findsOneWidget);
+      expect(find.text('Today 1'), findsWidgets);
+      expect(find.text('Week 1'), findsWidgets);
       expect(find.text('Month 1'), findsOneWidget);
       tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Week 1'))
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Week 1').first)
           .onSelected
           ?.call(true);
       await tester.pumpAndSettle();
@@ -78,6 +78,24 @@ void main() {
           ?.call(true);
       await tester.pumpAndSettle();
       expect(find.textContaining('This month plan blocks'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Questions 1'),
+        500,
+        scrollable: pageScroll,
+      );
+      expect(find.text('All 2'), findsOneWidget);
+      expect(find.text('Today 1'), findsWidgets);
+      expect(find.text('Week 1'), findsWidgets);
+      expect(find.text('Month 2'), findsOneWidget);
+      tester
+          .widget<ChoiceChip>(
+            find.widgetWithText(ChoiceChip, 'Questions 1').last,
+          )
+          .onSelected
+          ?.call(true);
+      await tester.pumpAndSettle();
+      expect(find.text('Build FlightIQ demo'), findsWidgets);
+      expect(find.text('Refactor portfolio repo'), findsNothing);
       expect(tester.takeException(), isNull);
       controller.dispose();
     });
@@ -96,6 +114,44 @@ extension on AgentDesktopSnapshot {
       deadline: '2026-06-21T09:00:00',
       nextAction: 'Finish dashboard and video.',
       status: 'planned',
+    );
+    const hackathonEvent = PlanningEventSummary(
+      id: 1,
+      eventType: 'hackathon',
+      source: 'hackathon',
+      title: 'Build FlightIQ demo',
+      project: 'FlightIQ',
+      idea: 'Prioritize traveler actions.',
+      deadline: '2026-06-21T09:00:00',
+      plannedStart: '2026-06-14T09:00:00',
+      plannedMinutes: 90,
+      status: 'planned',
+      workDone: 'Repo initialized.',
+      workLeft: 'Finish dashboard and video.',
+      repoUrl: '',
+      repoLatestActivity: '',
+      nextQuestion: 'What changed in FlightIQ?',
+      lastProgressNote: '',
+      progressLog: [],
+    );
+    const repoEvent = PlanningEventSummary(
+      id: 2,
+      eventType: 'repo',
+      source: 'manual',
+      title: 'Refactor portfolio repo',
+      project: 'Portfolio',
+      idea: 'Clean project cards.',
+      deadline: '2026-06-30T09:00:00',
+      plannedStart: '2026-06-20T14:00:00',
+      plannedMinutes: 60,
+      status: 'planned',
+      workDone: '',
+      workLeft: 'Ship README polish.',
+      repoUrl: '',
+      repoLatestActivity: '',
+      nextQuestion: '',
+      lastProgressNote: '',
+      progressLog: [],
     );
     return AgentDesktopSnapshot(
       baseUrl: baseUrl,
@@ -127,11 +183,22 @@ extension on AgentDesktopSnapshot {
         suggestions: [],
         deadlines: [],
         waitingFor: [],
-        planningEvents: [],
-        planningToday: [],
-        planningWeek: [],
-        planningMonth: [],
-        questionQueue: [],
+        planningEvents: [hackathonEvent, repoEvent],
+        planningToday: [hackathonEvent],
+        planningWeek: [hackathonEvent],
+        planningMonth: [hackathonEvent, repoEvent],
+        questionQueue: [
+          PlanningQuestion(
+            eventId: 1,
+            question: 'What changed in FlightIQ?',
+            title: 'Build FlightIQ demo',
+            project: 'FlightIQ',
+            eventType: 'hackathon',
+            status: 'planned',
+            deadline: '2026-06-21T09:00:00',
+            lastProgressNote: '',
+          ),
+        ],
         planToday: [block],
         planWeek: [block],
         planMonth: [block],

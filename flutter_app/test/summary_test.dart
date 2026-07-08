@@ -94,6 +94,20 @@ void main() {
                 'repo_latest_activity': '2026-06-18: add dashboard',
                 'next_question': 'What changed in FlightIQ?',
                 'last_progress_note': 'Finished pitch copy.',
+                'metadata': {
+                  'progress_log': [
+                    {
+                      'at': '2026-06-17T18:00:00',
+                      'note': 'Sketched idea and chose stack.',
+                      'question': 'What changed in FlightIQ?',
+                    },
+                    {
+                      'at': '2026-06-18T20:00:00',
+                      'note': 'Finished pitch copy.',
+                      'question': 'What changed in FlightIQ?',
+                    },
+                  ],
+                },
               },
             ],
             'agenda': {
@@ -116,6 +130,15 @@ void main() {
                   'repo_latest_activity': '2026-06-18: add dashboard',
                   'next_question': 'What changed in FlightIQ?',
                   'last_progress_note': 'Finished pitch copy.',
+                  'metadata': {
+                    'progress_log': [
+                      {
+                        'at': '2026-06-18T20:00:00',
+                        'note': 'Finished pitch copy.',
+                        'question': 'What changed in FlightIQ?',
+                      },
+                    ],
+                  },
                 },
               ],
               'month': [
@@ -136,6 +159,15 @@ void main() {
                   'repo_latest_activity': '2026-06-18: add dashboard',
                   'next_question': 'What changed in FlightIQ?',
                   'last_progress_note': 'Finished pitch copy.',
+                  'metadata': {
+                    'progress_log': [
+                      {
+                        'at': '2026-06-18T20:00:00',
+                        'note': 'Finished pitch copy.',
+                        'question': 'What changed in FlightIQ?',
+                      },
+                    ],
+                  },
                 },
               ],
             },
@@ -208,12 +240,14 @@ void main() {
               'label': 'Gmail account',
               'ok': true,
               'detail': '1 account connected, 1 syncing',
+              'action': 'Use AiOS Settings to manage Gmail accounts.',
             },
             {
               'id': 'planner',
               'label': 'Planner rows',
               'ok': true,
               'detail': '1 real-life rows ready, 1 waiting for your answer.',
+              'action': 'Answer waiting questions in WDYD.',
             },
           ],
         },
@@ -264,6 +298,10 @@ void main() {
     expect(snapshot.readiness.total, 7);
     expect(snapshot.readiness.allReady, isFalse);
     expect(snapshot.readiness.items.first.label, 'Gmail account');
+    expect(
+      snapshot.readiness.items.first.action,
+      'Use AiOS Settings to manage Gmail accounts.',
+    );
     expect(snapshot.intelligence.urgentEmails, 3);
     expect(snapshot.intelligence.todayItems.single, 'Reply to Client A');
     expect(snapshot.intelligence.weeklyItems.single, 'Project work');
@@ -303,6 +341,11 @@ void main() {
     );
     expect(
       snapshot.intelligence.planningEvents.single.lastProgressNote,
+      'Finished pitch copy.',
+    );
+    expect(snapshot.intelligence.planningEvents.single.progressLog.length, 2);
+    expect(
+      snapshot.intelligence.planningEvents.single.progressLog.last.note,
       'Finished pitch copy.',
     );
   });

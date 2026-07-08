@@ -1395,7 +1395,7 @@ class _ReadinessPanel extends StatelessWidget {
                     : 1;
                 return GridView.count(
                   crossAxisCount: columns,
-                  childAspectRatio: columns == 1 ? 3.3 : 2.65,
+                  childAspectRatio: columns == 1 ? 2.55 : 2.05,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                   shrinkWrap: true,
@@ -1455,10 +1455,23 @@ class _ReadinessTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   item.detail,
-                  maxLines: 3,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
+                if (item.action.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    item.action,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2048,42 +2061,155 @@ Future<void> _showAnswerDialog(
   await onAnswer(question, update);
 }
 
-class _PlanningEventsPanel extends StatelessWidget {
+enum _EventRowFilter { all, today, week, month, questions }
+
+class _PlanningEventsPanel extends StatefulWidget {
   const _PlanningEventsPanel({required this.intelligence});
   final IntelligenceSnapshot intelligence;
 
   @override
+  State<_PlanningEventsPanel> createState() => _PlanningEventsPanelState();
+}
+
+class _PlanningEventsPanelState extends State<_PlanningEventsPanel> {
+  _EventRowFilter _filter = _EventRowFilter.week;
+
+  @override
   Widget build(BuildContext context) {
+    final intelligence = widget.intelligence;
     final events = intelligence.planningEvents;
+    final visible = _visiblePlanningEvents(intelligence, _filter);
     return _Panel(
       eyebrow: 'Event rows',
       title: events.isEmpty
           ? 'No event rows yet'
-          : '${intelligence.planningToday.length} today - ${intelligence.planningWeek.length} this week - ${intelligence.planningMonth.length} this month',
+          : '${visible.length} showing - ${intelligence.planningToday.length} today - ${intelligence.planningWeek.length} this week - ${intelligence.planningMonth.length} this month',
       child: events.isEmpty
           ? const _EmptyState(
               message:
                   'AiOS will create rows from hackathons, email tasks, repos, learning videos, and goals.',
             )
           : Column(
-              children: _visiblePlanningEvents(
-                intelligence,
-              ).map((event) => _PlanningEventTile(event: event)).toList(),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _EventRowFilterBar(
+                  selected: _filter,
+                  intelligence: intelligence,
+                  onChanged: (filter) => setState(() => _filter = filter),
+                ),
+                const SizedBox(height: 10),
+                if (visible.isEmpty)
+                  const _EmptyState(message: 'No rows match this view yet.')
+                else
+                  ...visible.map((event) => _PlanningEventTile(event: event)),
+              ],
             ),
+    );
+  }
+}
+
+class _EventRowFilterBar extends StatelessWidget {
+  const _EventRowFilterBar({
+    required this.selected,
+    required this.intelligence,
+    required this.onChanged,
+  });
+  final _EventRowFilter selected;
+  final IntelligenceSnapshot intelligence;
+  final ValueChanged<_EventRowFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _EventFilterChip(
+          label: 'All',
+          count: intelligence.planningEvents.length,
+          selected: selected == _EventRowFilter.all,
+          onSelected: () => onChanged(_EventRowFilter.all),
+        ),
+        _EventFilterChip(
+          label: 'Today',
+          count: intelligence.planningToday.length,
+          selected: selected == _EventRowFilter.today,
+          onSelected: () => onChanged(_EventRowFilter.today),
+        ),
+        _EventFilterChip(
+          label: 'Week',
+          count: intelligence.planningWeek.length,
+          selected: selected == _EventRowFilter.week,
+          onSelected: () => onChanged(_EventRowFilter.week),
+        ),
+        _EventFilterChip(
+          label: 'Month',
+          count: intelligence.planningMonth.length,
+          selected: selected == _EventRowFilter.month,
+          onSelected: () => onChanged(_EventRowFilter.month),
+        ),
+        _EventFilterChip(
+          label: 'Questions',
+          count: intelligence.questionQueue.length,
+          selected: selected == _EventRowFilter.questions,
+          onSelected: () => onChanged(_EventRowFilter.questions),
+        ),
+      ],
+    );
+  }
+}
+
+class _EventFilterChip extends StatelessWidget {
+  const _EventFilterChip({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onSelected,
+  });
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text('$label $count'),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: AppColors.yellow,
+      labelStyle: TextStyle(
+        color: selected ? AppColors.ink : null,
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 }
 
 List<PlanningEventSummary> _visiblePlanningEvents(
   IntelligenceSnapshot intelligence,
+  _EventRowFilter filter,
 ) {
-  final selected = <PlanningEventSummary>[
-    ...intelligence.planningToday,
-    ...intelligence.planningWeek,
-    ...intelligence.planningEvents,
-  ];
+  final selected = switch (filter) {
+    _EventRowFilter.all => intelligence.planningEvents,
+    _EventRowFilter.today => intelligence.planningToday,
+    _EventRowFilter.week => intelligence.planningWeek,
+    _EventRowFilter.month => intelligence.planningMonth,
+    _EventRowFilter.questions => _eventsForQuestions(intelligence),
+  };
   final seen = <int>{};
-  return selected.where((event) => seen.add(event.id)).take(8).toList();
+  return selected.where((event) => seen.add(event.id)).take(20).toList();
+}
+
+List<PlanningEventSummary> _eventsForQuestions(
+  IntelligenceSnapshot intelligence,
+) {
+  final questionIds = intelligence.questionQueue
+      .map((question) => question.eventId)
+      .toSet();
+  return intelligence.planningEvents
+      .where((event) => questionIds.contains(event.id))
+      .toList();
 }
 
 class _PlanningEventTile extends StatelessWidget {
@@ -2200,6 +2326,10 @@ class _PlanningEventTile extends StatelessWidget {
                       style: muted,
                     ),
                   ],
+                  if (event.progressLog.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _ProgressLogPreview(entries: event.progressLog),
+                  ],
                   if (event.repoLatestActivity.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
@@ -2215,6 +2345,40 @@ class _PlanningEventTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProgressLogPreview extends StatelessWidget {
+  const _ProgressLogPreview({required this.entries});
+  final List<ProgressLogEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: Colors.grey,
+      fontWeight: FontWeight.w600,
+    );
+    final recent = entries.reversed.take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Progress notes', style: muted),
+        const SizedBox(height: 4),
+        for (final entry in recent)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Text(
+              [
+                if (entry.at.isNotEmpty) _shortDate(entry.at),
+                entry.note,
+              ].join(' - '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+      ],
     );
   }
 }

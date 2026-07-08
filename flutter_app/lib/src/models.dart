@@ -296,6 +296,7 @@ class ReadinessItem {
     required this.label,
     required this.ok,
     required this.detail,
+    required this.action,
   });
 
   factory ReadinessItem.fromJson(Map<String, dynamic> json) {
@@ -304,6 +305,7 @@ class ReadinessItem {
       label: json['label']?.toString() ?? 'Setup item',
       ok: json['ok'] == true,
       detail: json['detail']?.toString() ?? '',
+      action: json['action']?.toString() ?? '',
     );
   }
 
@@ -311,6 +313,7 @@ class ReadinessItem {
   final String label;
   final bool ok;
   final String detail;
+  final String action;
 }
 
 class IntelligenceSnapshot {
@@ -575,6 +578,7 @@ class PlanningEventSummary {
     required this.repoLatestActivity,
     required this.nextQuestion,
     required this.lastProgressNote,
+    required this.progressLog,
   });
 
   factory PlanningEventSummary.fromJson(Map<String, dynamic> json) {
@@ -595,6 +599,7 @@ class PlanningEventSummary {
       repoLatestActivity: json['repo_latest_activity']?.toString() ?? '',
       nextQuestion: json['next_question']?.toString() ?? '',
       lastProgressNote: json['last_progress_note']?.toString() ?? '',
+      progressLog: _progressLogFromJson(json['metadata']),
     );
   }
 
@@ -614,6 +619,38 @@ class PlanningEventSummary {
   final String repoLatestActivity;
   final String nextQuestion;
   final String lastProgressNote;
+  final List<ProgressLogEntry> progressLog;
+}
+
+class ProgressLogEntry {
+  const ProgressLogEntry({
+    required this.at,
+    required this.note,
+    required this.question,
+  });
+
+  factory ProgressLogEntry.fromJson(Map<String, dynamic> json) {
+    return ProgressLogEntry(
+      at: json['at']?.toString() ?? '',
+      note: json['note']?.toString() ?? '',
+      question: json['question']?.toString() ?? '',
+    );
+  }
+
+  final String at;
+  final String note;
+  final String question;
+}
+
+List<ProgressLogEntry> _progressLogFromJson(dynamic metadata) {
+  if (metadata is! Map<String, dynamic>) return const [];
+  final raw = metadata['progress_log'];
+  if (raw is! List<dynamic>) return const [];
+  return raw
+      .whereType<Map<String, dynamic>>()
+      .map(ProgressLogEntry.fromJson)
+      .where((entry) => entry.note.trim().isNotEmpty)
+      .toList(growable: false);
 }
 
 class PlanningQuestion {
