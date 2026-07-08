@@ -33,20 +33,31 @@ class AgentDesktopApi {
 
   Future<void> answerPlanningQuestion({
     required int eventId,
-    required String answer,
+    required PlanningProgressUpdate update,
   }) async {
     final pairing = await _discoverPairing();
     await _request(
       pairing,
       'PATCH',
       '/api/planning-events/$eventId',
-      body: {'progress_note': answer},
+      body: update.toJson(),
     );
   }
 
   Future<void> createPlanningEvent(PlanningEventDraft draft) async {
     final pairing = await _discoverPairing();
-    await _request(pairing, 'POST', '/api/planning-events', body: draft.toJson());
+    await _request(
+      pairing,
+      'POST',
+      '/api/planning-events',
+      body: draft.toJson(),
+    );
+  }
+
+  Future<IntelligenceSyncResult> syncIntelligence() async {
+    final pairing = await _discoverPairing();
+    final result = await _request(pairing, 'POST', '/api/intelligence/sync');
+    return IntelligenceSyncResult.fromJson(result);
   }
 
   Future<_Pairing> _discoverPairing() async {

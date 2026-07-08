@@ -982,9 +982,14 @@ class IntelligencePage extends StatelessWidget {
     final intelligence = controller.agent.intelligence;
     return _StandardPage(
       eyebrow: 'AiOS intelligence',
-      title: 'Email planner',
+      title: 'Life command planner',
       subtitle:
-          'Gmail, deadlines, suggestions, and plans are processed locally by AiOS and shown here through loopback.',
+          'Gmail, hackathons, repos, goals, videos, deadlines, and plans are processed locally by AiOS and shown here through loopback.',
+      action: IconButton(
+        tooltip: 'Sync Gmail and planner',
+        onPressed: controller.syncIntelligence,
+        icon: const Icon(Icons.sync),
+      ),
       child: Column(
         children: [
           _AgentConnectionBanner(agent: controller.agent),
@@ -1198,35 +1203,129 @@ class _BriefingColumn extends StatelessWidget {
   }
 }
 
-class _PlanBlocksPanel extends StatelessWidget {
+enum _PlanRange { today, week, month }
+
+class _PlanBlocksPanel extends StatefulWidget {
   const _PlanBlocksPanel({required this.intelligence});
   final IntelligenceSnapshot intelligence;
 
   @override
+  State<_PlanBlocksPanel> createState() => _PlanBlocksPanelState();
+}
+
+class _PlanBlocksPanelState extends State<_PlanBlocksPanel> {
+  _PlanRange _range = _PlanRange.today;
+
+  @override
   Widget build(BuildContext context) {
-    final blocks = intelligence.planToday.isNotEmpty
-        ? intelligence.planToday
-        : intelligence.planWeek.isNotEmpty
-        ? intelligence.planWeek.take(6).toList()
-        : intelligence.planMonth.take(6).toList();
-    final label = intelligence.planToday.isNotEmpty
-        ? 'Today'
-        : intelligence.planWeek.isNotEmpty
-        ? 'This week'
-        : 'This month';
+    final intelligence = widget.intelligence;
+    final blocks = switch (_range) {
+      _PlanRange.today => intelligence.planToday,
+      _PlanRange.week => intelligence.planWeek.take(16).toList(),
+      _PlanRange.month => intelligence.planMonth.take(30).toList(),
+    };
+    final label = switch (_range) {
+      _PlanRange.today => 'Today',
+      _PlanRange.week => 'This week',
+      _PlanRange.month => 'This month',
+    };
     return _Panel(
       eyebrow: 'Agenda',
       title: blocks.isEmpty ? 'No planned blocks yet' : '$label plan blocks',
-      child: blocks.isEmpty
-          ? const _EmptyState(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _PlanRangeSelector(
+            selected: _range,
+            todayCount: intelligence.planToday.length,
+            weekCount: intelligence.planWeek.length,
+            monthCount: intelligence.planMonth.length,
+            onChanged: (range) => setState(() => _range = range),
+          ),
+          const SizedBox(height: 10),
+          if (blocks.isEmpty)
+            const _EmptyState(
               message:
                   'Schedule rows with planned start and minutes to build a real agenda.',
             )
-          : Column(
+          else
+            Column(
               children: blocks
                   .map((block) => _PlanBlockTile(block: block))
                   .toList(),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanRangeSelector extends StatelessWidget {
+  const _PlanRangeSelector({
+    required this.selected,
+    required this.todayCount,
+    required this.weekCount,
+    required this.monthCount,
+    required this.onChanged,
+  });
+  final _PlanRange selected;
+  final int todayCount;
+  final int weekCount;
+  final int monthCount;
+  final ValueChanged<_PlanRange> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _PlanRangeChip(
+          label: 'Today',
+          count: todayCount,
+          selected: selected == _PlanRange.today,
+          onSelected: () => onChanged(_PlanRange.today),
+        ),
+        _PlanRangeChip(
+          label: 'Week',
+          count: weekCount,
+          selected: selected == _PlanRange.week,
+          onSelected: () => onChanged(_PlanRange.week),
+        ),
+        _PlanRangeChip(
+          label: 'Month',
+          count: monthCount,
+          selected: selected == _PlanRange.month,
+          onSelected: () => onChanged(_PlanRange.month),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlanRangeChip extends StatelessWidget {
+  const _PlanRangeChip({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onSelected,
+  });
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text('$label $count'),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: AppColors.yellow,
+      labelStyle: TextStyle(
+        color: selected ? AppColors.ink : null,
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 }
@@ -1421,57 +1520,54 @@ class _QuickAddPlanningEventPanelState
       child: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth > 760;
-          final firstRow = [
-            Expanded(
-              flex: 2,
-              child: _TextInput(
-                controller: _title,
-                label: 'Event title',
-                icon: Icons.flag_outlined,
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _EventTypeMenu(
-                value: _eventType,
-                onChanged: (value) => setState(() => _eventType = value),
-              ),
-            ),
-          ];
-          final secondRow = [
-            Expanded(
-              child: _TextInput(
-                controller: _project,
-                label: 'Project or goal',
-                icon: Icons.workspaces_outline,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _TextInput(
-                controller: _repoUrl,
-                label: 'Repo URL',
-                icon: Icons.code_outlined,
-              ),
-            ),
-          ];
+          final titleField = _TextInput(
+            controller: _title,
+            label: 'Event title',
+            icon: Icons.flag_outlined,
+            onChanged: (_) => setState(() {}),
+          );
+          final typeMenu = _EventTypeMenu(
+            value: _eventType,
+            onChanged: (value) => setState(() => _eventType = value),
+          );
+          final projectField = _TextInput(
+            controller: _project,
+            label: 'Project or goal',
+            icon: Icons.workspaces_outline,
+          );
+          final repoField = _TextInput(
+            controller: _repoUrl,
+            label: 'Repo URL',
+            icon: Icons.code_outlined,
+          );
           return Column(
             children: [
               if (wide)
-                Row(children: firstRow)
+                Row(
+                  children: [
+                    Expanded(flex: 2, child: titleField),
+                    const SizedBox(width: 10),
+                    Expanded(child: typeMenu),
+                  ],
+                )
               else ...[
-                firstRow.first,
+                titleField,
                 const SizedBox(height: 10),
-                firstRow.last,
+                typeMenu,
               ],
               const SizedBox(height: 10),
               if (wide)
-                Row(children: secondRow)
+                Row(
+                  children: [
+                    Expanded(child: projectField),
+                    const SizedBox(width: 10),
+                    Expanded(child: repoField),
+                  ],
+                )
               else ...[
-                secondRow.first,
+                projectField,
                 const SizedBox(height: 10),
-                secondRow.last,
+                repoField,
               ],
               const SizedBox(height: 10),
               _ScheduleRow(
@@ -1551,7 +1647,7 @@ class _EventTypeMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: const InputDecoration(
         labelText: 'Type',
         prefixIcon: Icon(Icons.category_outlined),
@@ -1622,37 +1718,40 @@ class _ScheduleRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth > 760;
-        final children = [
-          Expanded(
-            child: _DateTimeButton(
-              label: 'Deadline',
-              value: deadline,
-              icon: Icons.event_outlined,
-              onChanged: onDeadline,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _DateTimeButton(
-              label: 'Planned start',
-              value: plannedStart,
-              icon: Icons.schedule_outlined,
-              onChanged: onPlannedStart,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _MinutesStepper(value: minutes, onChanged: onMinutes),
-          ),
-        ];
-        if (wide) return Row(children: children);
+        final deadlineButton = _DateTimeButton(
+          label: 'Deadline',
+          value: deadline,
+          icon: Icons.event_outlined,
+          onChanged: onDeadline,
+        );
+        final plannedButton = _DateTimeButton(
+          label: 'Planned start',
+          value: plannedStart,
+          icon: Icons.schedule_outlined,
+          onChanged: onPlannedStart,
+        );
+        final minutesStepper = _MinutesStepper(
+          value: minutes,
+          onChanged: onMinutes,
+        );
+        if (wide) {
+          return Row(
+            children: [
+              Expanded(child: deadlineButton),
+              const SizedBox(width: 10),
+              Expanded(child: plannedButton),
+              const SizedBox(width: 10),
+              Expanded(child: minutesStepper),
+            ],
+          );
+        }
         return Column(
           children: [
-            children[0],
+            deadlineButton,
             const SizedBox(height: 10),
-            children[2],
+            plannedButton,
             const SizedBox(height: 10),
-            children[4],
+            minutesStepper,
           ],
         );
       },
@@ -1755,7 +1854,10 @@ class _MinutesStepper extends StatelessWidget {
 class _QuestionQueuePanel extends StatelessWidget {
   const _QuestionQueuePanel({required this.questions, required this.onAnswer});
   final List<PlanningQuestion> questions;
-  final Future<void> Function(PlanningQuestion question, String answer)
+  final Future<void> Function(
+    PlanningQuestion question,
+    PlanningProgressUpdate update,
+  )
   onAnswer;
 
   @override
@@ -1786,7 +1888,10 @@ class _QuestionQueuePanel extends StatelessWidget {
 class _QuestionTile extends StatelessWidget {
   const _QuestionTile({required this.question, required this.onAnswer});
   final PlanningQuestion question;
-  final Future<void> Function(PlanningQuestion question, String answer)
+  final Future<void> Function(
+    PlanningQuestion question,
+    PlanningProgressUpdate update,
+  )
   onAnswer;
 
   @override
@@ -1828,47 +1933,119 @@ class _QuestionTile extends StatelessWidget {
 Future<void> _showAnswerDialog(
   BuildContext context,
   PlanningQuestion question,
-  Future<void> Function(PlanningQuestion question, String answer) onAnswer,
+  Future<void> Function(
+    PlanningQuestion question,
+    PlanningProgressUpdate update,
+  )
+  onAnswer,
 ) async {
-  final controller = TextEditingController();
-  final answer = await showDialog<String>(
+  final noteController = TextEditingController();
+  final doneController = TextEditingController();
+  final leftController = TextEditingController();
+  const allowedStatuses = {'planned', 'in_progress', 'blocked', 'done'};
+  var status = allowedStatuses.contains(question.status)
+      ? question.status
+      : 'in_progress';
+  final update = await showDialog<PlanningProgressUpdate>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(question.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(question.question),
-          const SizedBox(height: 12),
-          TextField(
-            controller: controller,
-            minLines: 3,
-            maxLines: 6,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Progress note',
-              hintText: 'What got done, what is left, notes to remember...',
-              border: OutlineInputBorder(),
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Text(question.title),
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(question.question),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'planned', child: Text('Planned')),
+                    DropdownMenuItem(
+                      value: 'in_progress',
+                      child: Text('In progress'),
+                    ),
+                    DropdownMenuItem(value: 'blocked', child: Text('Blocked')),
+                    DropdownMenuItem(value: 'done', child: Text('Done')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => status = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: doneController,
+                  minLines: 2,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Work done',
+                    hintText: 'What did you finish since last check-in?',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: leftController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Work left',
+                    hintText: 'What remains, what is blocked, or what moved?',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes to remember',
+                    hintText:
+                        'Video completed, repo context, decisions, links, or reminders...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              context,
+              PlanningProgressUpdate(
+                progressNote: noteController.text,
+                workDone: doneController.text,
+                workLeft: leftController.text,
+                status: status,
+              ),
+            ),
+            child: const Text('Save'),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, controller.text),
-          child: const Text('Save'),
-        ),
-      ],
     ),
   );
-  controller.dispose();
-  if (answer == null || answer.trim().isEmpty) return;
-  await onAnswer(question, answer);
+  noteController.dispose();
+  doneController.dispose();
+  leftController.dispose();
+  if (update == null || update.isEmpty) return;
+  await onAnswer(question, update);
 }
 
 class _PlanningEventsPanel extends StatelessWidget {
@@ -1879,7 +2056,7 @@ class _PlanningEventsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final events = intelligence.planningEvents;
     return _Panel(
-      eyebrow: 'Command planner',
+      eyebrow: 'Event rows',
       title: events.isEmpty
           ? 'No event rows yet'
           : '${intelligence.planningToday.length} today - ${intelligence.planningWeek.length} this week - ${intelligence.planningMonth.length} this month',
@@ -1964,6 +2141,7 @@ class _PlanningEventTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     [
+                      if (event.source.isNotEmpty) 'Source ${event.source}',
                       if (event.project.isNotEmpty) event.project,
                       if (event.deadline.isNotEmpty)
                         'Due ${_shortDate(event.deadline)}',
@@ -1974,13 +2152,40 @@ class _PlanningEventTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: muted,
                   ),
+                  if (event.repoUrl.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Repo URL: ${event.repoUrl}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: muted,
+                    ),
+                  ],
+                  if (event.idea.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Idea: ${event.idea}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                  if (event.workDone.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Done: ${event.workDone}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
                   if (event.workLeft.isNotEmpty ||
                       event.nextQuestion.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
                       event.workLeft.isNotEmpty
-                          ? event.workLeft
-                          : event.nextQuestion,
+                          ? 'Left: ${event.workLeft}'
+                          : 'Ask: ${event.nextQuestion}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
@@ -1998,7 +2203,7 @@ class _PlanningEventTile extends StatelessWidget {
                   if (event.repoLatestActivity.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
-                      event.repoLatestActivity,
+                      'Repo activity: ${event.repoLatestActivity}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: muted,
@@ -3073,4 +3278,8 @@ String _shortDate(String value) {
   final parsed = DateTime.tryParse(value);
   if (parsed == null) return value;
   return DateFormat('MMM d, h:mm a').format(parsed);
+}
+
+String _formatDraftDate(DateTime value) {
+  return DateFormat('MMM d, h:mm a').format(value);
 }

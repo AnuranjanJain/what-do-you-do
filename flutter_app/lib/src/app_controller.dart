@@ -124,16 +124,15 @@ class AppController extends ChangeNotifier {
 
   Future<void> answerPlanningQuestion(
     PlanningQuestion question,
-    String answer,
+    PlanningProgressUpdate update,
   ) async {
-    final trimmed = answer.trim();
-    if (trimmed.isEmpty) return;
+    if (update.isEmpty) return;
     message = 'Saving progress for ${question.title}...';
     notifyListeners();
     try {
       await _agentApi.answerPlanningQuestion(
         eventId: question.eventId,
-        answer: trimmed,
+        update: update,
       );
       message = 'Progress saved to AiOS.';
       await refresh(silent: true);
@@ -157,6 +156,22 @@ class AppController extends ChangeNotifier {
       message = error is Exception
           ? error.toString().replaceFirst('Exception: ', '')
           : 'Could not add planner row to AiOS.';
+      notifyListeners();
+    }
+  }
+
+  Future<void> syncIntelligence() async {
+    message = 'Syncing Gmail, planner rows, and local AI insights...';
+    notifyListeners();
+    try {
+      final result = await _agentApi.syncIntelligence();
+      await refresh(silent: true);
+      message = result.summary;
+      notifyListeners();
+    } catch (error) {
+      message = error is Exception
+          ? error.toString().replaceFirst('Exception: ', '')
+          : 'Could not sync AiOS intelligence.';
       notifyListeners();
     }
   }

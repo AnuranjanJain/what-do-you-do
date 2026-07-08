@@ -83,6 +83,7 @@ void main() {
                 'source': 'hackathon',
                 'title': 'Build FlightIQ demo',
                 'project': 'FlightIQ',
+                'idea': 'Use flight delay AI to prioritize traveler actions.',
                 'deadline': '2026-06-21T09:00:00',
                 'planned_start': '2026-06-19T09:00:00',
                 'planned_minutes': 90,
@@ -104,6 +105,7 @@ void main() {
                   'source': 'hackathon',
                   'title': 'Build FlightIQ demo',
                   'project': 'FlightIQ',
+                  'idea': 'Use flight delay AI to prioritize traveler actions.',
                   'deadline': '2026-06-21T09:00:00',
                   'planned_start': '2026-06-19T09:00:00',
                   'planned_minutes': 90,
@@ -123,6 +125,7 @@ void main() {
                   'source': 'hackathon',
                   'title': 'Build FlightIQ demo',
                   'project': 'FlightIQ',
+                  'idea': 'Use flight delay AI to prioritize traveler actions.',
                   'deadline': '2026-06-21T09:00:00',
                   'planned_start': '2026-06-19T09:00:00',
                   'planned_minutes': 90,
@@ -143,6 +146,7 @@ void main() {
                   'event_id': 7,
                   'title': 'Build FlightIQ demo',
                   'project': 'FlightIQ',
+                  'idea': 'Use flight delay AI to prioritize traveler actions.',
                   'event_type': 'hackathon',
                   'start': '2026-06-19T09:00:00',
                   'duration_minutes': 90,
@@ -156,6 +160,7 @@ void main() {
                   'event_id': 7,
                   'title': 'Build FlightIQ demo',
                   'project': 'FlightIQ',
+                  'idea': 'Use flight delay AI to prioritize traveler actions.',
                   'event_type': 'hackathon',
                   'start': '2026-06-19T09:00:00',
                   'duration_minutes': 90,
@@ -182,6 +187,7 @@ void main() {
                 'question': 'What changed in FlightIQ?',
                 'title': 'Build FlightIQ demo',
                 'project': 'FlightIQ',
+                'idea': 'Use flight delay AI to prioritize traveler actions.',
                 'event_type': 'hackathon',
                 'status': 'planned',
                 'deadline': '2026-06-21T09:00:00',
@@ -265,7 +271,16 @@ void main() {
       snapshot.intelligence.planningEvents.single.title,
       'Build FlightIQ demo',
     );
+    expect(
+      snapshot.intelligence.planningEvents.single.idea,
+      'Use flight delay AI to prioritize traveler actions.',
+    );
     expect(snapshot.intelligence.planningEvents.single.eventType, 'hackathon');
+    expect(snapshot.intelligence.planningEvents.single.source, 'hackathon');
+    expect(
+      snapshot.intelligence.planningEvents.single.repoUrl,
+      'https://github.com/anura/flightiq',
+    );
     expect(
       snapshot.intelligence.planningWeek.single.title,
       'Build FlightIQ demo',
@@ -289,6 +304,31 @@ void main() {
     expect(
       snapshot.intelligence.planningEvents.single.lastProgressNote,
       'Finished pitch copy.',
+    );
+  });
+
+  test('intelligence sync result summarizes account counts', () {
+    final result = IntelligenceSyncResult.fromJson({
+      'sync': [
+        {'ok': true, 'seen': 4, 'imported': 2},
+        {'ok': false, 'seen': 1, 'imported': 0},
+      ],
+      'analysis': {'analyzed': 3},
+      'suggestions': {'created': 2},
+      'planning': {'rows': 6, 'questions': 4},
+    });
+
+    expect(result.accounts, 2);
+    expect(result.seen, 5);
+    expect(result.imported, 2);
+    expect(result.analyzed, 3);
+    expect(result.suggestions, 2);
+    expect(result.plannerRows, 6);
+    expect(result.plannerQuestions, 4);
+    expect(result.hadErrors, isTrue);
+    expect(
+      result.summary,
+      'Sync needs attention: 2 new of 5 seen, 3 analyzed, 6 rows, 4 questions.',
     );
   });
 
@@ -329,14 +369,80 @@ void main() {
         deadline: '',
         lastProgressNote: '',
       ),
-      'Finished the repo setup and wrote notes.',
+      const PlanningProgressUpdate(
+        progressNote: 'Finished the repo setup and wrote notes.',
+        workDone: 'Repo initialized and README drafted.',
+        workLeft: 'Record demo video.',
+        status: 'in_progress',
+      ),
     );
 
     expect(agentApi.answeredEventId, 7);
-    expect(agentApi.answer, 'Finished the repo setup and wrote notes.');
+    expect(
+      agentApi.progressUpdate?.toJson()['progress_note'],
+      'Finished the repo setup and wrote notes.',
+    );
+    expect(
+      agentApi.progressUpdate?.toJson()['work_done'],
+      'Repo initialized and README drafted.',
+    );
+    expect(
+      agentApi.progressUpdate?.toJson()['work_left'],
+      'Record demo video.',
+    );
+    expect(agentApi.progressUpdate?.toJson()['status'], 'in_progress');
     expect(
       controller.message,
       'No activity recorded for ${controller.selectedDate}.',
+    );
+  });
+
+  test('planner rows can be created from WDYD', () async {
+    final agentApi = _FakeAgentDesktopApi();
+    final controller = AppController(
+      api: _FakeCollectorApi(),
+      agentApi: agentApi,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.createPlanningEvent(
+      const PlanningEventDraft(
+        eventType: 'learning_video',
+        title: 'Finish GenAI attention video',
+        project: 'GenAI',
+        idea: 'Understand attention before building the demo.',
+        deadline: '2026-07-12T18:00:00',
+        plannedStart: '2026-07-10T09:00:00',
+        plannedMinutes: 60,
+        workDone: 'Watched embeddings chapter.',
+        workLeft: 'Finish attention video and save notes.',
+        repoUrl: 'https://github.com/anura/genai-notes',
+      ),
+    );
+
+    expect(agentApi.createdDraft?.eventType, 'learning_video');
+    expect(agentApi.createdDraft?.project, 'GenAI');
+    expect(agentApi.createdDraft?.plannedMinutes, 60);
+    expect(
+      agentApi.createdDraft?.toJson()['work_left'],
+      'Finish attention video and save notes.',
+    );
+  });
+
+  test('email intelligence sync can be triggered from WDYD', () async {
+    final agentApi = _FakeAgentDesktopApi();
+    final controller = AppController(
+      api: _FakeCollectorApi(),
+      agentApi: agentApi,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.syncIntelligence();
+
+    expect(agentApi.syncedIntelligence, isTrue);
+    expect(
+      controller.message,
+      'Sync finished: 2 new of 5 seen, 3 analyzed, 4 rows, 2 questions.',
     );
   });
 
@@ -398,7 +504,9 @@ class _FakeCollectorApi extends CollectorApi {
 
 class _FakeAgentDesktopApi extends AgentDesktopApi {
   int? answeredEventId;
-  String? answer;
+  PlanningProgressUpdate? progressUpdate;
+  PlanningEventDraft? createdDraft;
+  bool syncedIntelligence = false;
 
   @override
   Future<AgentDesktopSnapshot> snapshot() async =>
@@ -407,10 +515,30 @@ class _FakeAgentDesktopApi extends AgentDesktopApi {
   @override
   Future<void> answerPlanningQuestion({
     required int eventId,
-    required String answer,
+    required PlanningProgressUpdate update,
   }) async {
     answeredEventId = eventId;
-    this.answer = answer;
+    progressUpdate = update;
+  }
+
+  @override
+  Future<void> createPlanningEvent(PlanningEventDraft draft) async {
+    createdDraft = draft;
+  }
+
+  @override
+  Future<IntelligenceSyncResult> syncIntelligence() async {
+    syncedIntelligence = true;
+    return const IntelligenceSyncResult(
+      accounts: 1,
+      seen: 5,
+      imported: 2,
+      analyzed: 3,
+      suggestions: 1,
+      plannerRows: 4,
+      plannerQuestions: 2,
+      hadErrors: false,
+    );
   }
 }
 

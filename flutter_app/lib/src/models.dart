@@ -564,6 +564,7 @@ class PlanningEventSummary {
     required this.source,
     required this.title,
     required this.project,
+    required this.idea,
     required this.deadline,
     required this.plannedStart,
     required this.plannedMinutes,
@@ -583,6 +584,7 @@ class PlanningEventSummary {
       source: json['source']?.toString() ?? '',
       title: json['title']?.toString() ?? 'Untitled event',
       project: json['project']?.toString() ?? '',
+      idea: json['idea']?.toString() ?? '',
       deadline: json['deadline']?.toString() ?? '',
       plannedStart: json['planned_start']?.toString() ?? '',
       plannedMinutes: (json['planned_minutes'] as num?)?.round() ?? 45,
@@ -601,6 +603,7 @@ class PlanningEventSummary {
   final String source;
   final String title;
   final String project;
+  final String idea;
   final String deadline;
   final String plannedStart;
   final int plannedMinutes;
@@ -646,6 +649,91 @@ class PlanningQuestion {
   final String status;
   final String deadline;
   final String lastProgressNote;
+}
+
+class PlanningProgressUpdate {
+  const PlanningProgressUpdate({
+    required this.progressNote,
+    required this.workDone,
+    required this.workLeft,
+    required this.status,
+  });
+
+  final String progressNote;
+  final String workDone;
+  final String workLeft;
+  final String status;
+
+  bool get isEmpty =>
+      progressNote.trim().isEmpty &&
+      workDone.trim().isEmpty &&
+      workLeft.trim().isEmpty &&
+      status.trim().isEmpty;
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (progressNote.trim().isNotEmpty) 'progress_note': progressNote.trim(),
+      if (workDone.trim().isNotEmpty) 'work_done': workDone.trim(),
+      if (workLeft.trim().isNotEmpty) 'work_left': workLeft.trim(),
+      if (status.trim().isNotEmpty) 'status': status.trim(),
+    };
+  }
+}
+
+class IntelligenceSyncResult {
+  const IntelligenceSyncResult({
+    required this.accounts,
+    required this.seen,
+    required this.imported,
+    required this.analyzed,
+    required this.suggestions,
+    required this.plannerRows,
+    required this.plannerQuestions,
+    required this.hadErrors,
+  });
+
+  factory IntelligenceSyncResult.fromJson(Map<String, dynamic> json) {
+    final sync = json['sync'] as List<dynamic>? ?? const [];
+    final accountResults = sync.whereType<Map<String, dynamic>>().toList();
+    final analysis = json['analysis'] as Map<String, dynamic>? ?? const {};
+    final suggestions = json['suggestions'];
+    final planning = json['planning'] as Map<String, dynamic>? ?? const {};
+    return IntelligenceSyncResult(
+      accounts: accountResults.length,
+      seen: accountResults.fold<int>(
+        0,
+        (total, item) => total + ((item['seen'] as num?)?.round() ?? 0),
+      ),
+      imported: accountResults.fold<int>(
+        0,
+        (total, item) => total + ((item['imported'] as num?)?.round() ?? 0),
+      ),
+      analyzed: (analysis['analyzed'] as num?)?.round() ?? 0,
+      suggestions: suggestions is Map<String, dynamic>
+          ? (suggestions['created'] as num?)?.round() ?? 0
+          : (suggestions as num?)?.round() ?? 0,
+      plannerRows: (planning['rows'] as num?)?.round() ?? 0,
+      plannerQuestions: (planning['questions'] as num?)?.round() ?? 0,
+      hadErrors: accountResults.any((item) => item['ok'] == false),
+    );
+  }
+
+  final int accounts;
+  final int seen;
+  final int imported;
+  final int analyzed;
+  final int suggestions;
+  final int plannerRows;
+  final int plannerQuestions;
+  final bool hadErrors;
+
+  String get summary {
+    if (accounts == 0) {
+      return 'No Gmail accounts are enabled yet.';
+    }
+    final status = hadErrors ? 'Sync needs attention' : 'Sync finished';
+    return '$status: $imported new of $seen seen, $analyzed analyzed, $plannerRows rows, $plannerQuestions questions.';
+  }
 }
 
 class PlanningEventDraft {
