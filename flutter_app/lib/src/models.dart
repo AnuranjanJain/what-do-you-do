@@ -144,6 +144,7 @@ class AgentDesktopSnapshot {
     required this.latestOpportunityTitle,
     required this.latestActivitySummary,
     required this.intelligence,
+    required this.readiness,
     required this.dataDir,
     required this.importsDir,
     required this.updatedAt,
@@ -170,6 +171,7 @@ class AgentDesktopSnapshot {
       latestOpportunityTitle: '',
       latestActivitySummary: '',
       intelligence: IntelligenceSnapshot.empty(),
+      readiness: ReadinessSnapshot.empty(),
       dataDir: '',
       importsDir: '',
       updatedAt: '',
@@ -193,6 +195,7 @@ class AgentDesktopSnapshot {
     final plan = live['plan'] as Map<String, dynamic>? ?? const {};
     final intelligence =
         live['intelligence'] as Map<String, dynamic>? ?? const {};
+    final readiness = live['readiness'] as Map<String, dynamic>? ?? const {};
 
     return AgentDesktopSnapshot(
       baseUrl: baseUrl,
@@ -216,6 +219,7 @@ class AgentDesktopSnapshot {
       latestOpportunityTitle: latestOpportunity['title']?.toString() ?? '',
       latestActivitySummary: latestActivity['agent_summary']?.toString() ?? '',
       intelligence: IntelligenceSnapshot.fromJson(intelligence),
+      readiness: ReadinessSnapshot.fromJson(readiness),
       dataDir: desktop['data_dir']?.toString() ?? '',
       importsDir: desktop['imports_dir']?.toString() ?? '',
       updatedAt: live['updated_at']?.toString() ?? '',
@@ -241,11 +245,72 @@ class AgentDesktopSnapshot {
   final String latestOpportunityTitle;
   final String latestActivitySummary;
   final IntelligenceSnapshot intelligence;
+  final ReadinessSnapshot readiness;
   final String dataDir;
   final String importsDir;
   final String updatedAt;
 
   int get runningWorkers => workers.where((worker) => worker.running).length;
+}
+
+class ReadinessSnapshot {
+  const ReadinessSnapshot({
+    required this.ready,
+    required this.total,
+    required this.allReady,
+    required this.items,
+  });
+
+  factory ReadinessSnapshot.empty() {
+    return const ReadinessSnapshot(
+      ready: 0,
+      total: 0,
+      allReady: false,
+      items: [],
+    );
+  }
+
+  factory ReadinessSnapshot.fromJson(Map<String, dynamic> json) {
+    return ReadinessSnapshot(
+      ready: (json['ready'] as num?)?.round() ?? 0,
+      total: (json['total'] as num?)?.round() ?? 0,
+      allReady: json['all_ready'] == true,
+      items: (json['items'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(ReadinessItem.fromJson)
+          .toList(),
+    );
+  }
+
+  final int ready;
+  final int total;
+  final bool allReady;
+  final List<ReadinessItem> items;
+
+  bool get hasItems => items.isNotEmpty;
+}
+
+class ReadinessItem {
+  const ReadinessItem({
+    required this.id,
+    required this.label,
+    required this.ok,
+    required this.detail,
+  });
+
+  factory ReadinessItem.fromJson(Map<String, dynamic> json) {
+    return ReadinessItem(
+      id: json['id']?.toString() ?? '',
+      label: json['label']?.toString() ?? 'Setup item',
+      ok: json['ok'] == true,
+      detail: json['detail']?.toString() ?? '',
+    );
+  }
+
+  final String id;
+  final String label;
+  final bool ok;
+  final String detail;
 }
 
 class IntelligenceSnapshot {
@@ -268,6 +333,7 @@ class IntelligenceSnapshot {
     required this.planToday,
     required this.planWeek,
     required this.planMonth,
+    required this.briefing,
   });
 
   factory IntelligenceSnapshot.empty() {
@@ -290,6 +356,17 @@ class IntelligenceSnapshot {
       planToday: [],
       planWeek: [],
       planMonth: [],
+      briefing: PlannerBriefing(
+        headline: '',
+        todayCount: 0,
+        weekCount: 0,
+        monthCount: 0,
+        needsAnswerCount: 0,
+        blockedCount: 0,
+        focus: [],
+        dueSoon: [],
+        askNext: [],
+      ),
     );
   }
 
@@ -323,6 +400,9 @@ class IntelligenceSnapshot {
       planToday: _planningBlockList(planning, 'today'),
       planWeek: _planningBlockList(planning, 'week'),
       planMonth: _planningBlockList(planning, 'month'),
+      briefing: PlannerBriefing.fromJson(
+        planning['briefing'] as Map<String, dynamic>? ?? const {},
+      ),
     );
   }
 
@@ -344,6 +424,7 @@ class IntelligenceSnapshot {
   final List<PlanningBlock> planToday;
   final List<PlanningBlock> planWeek;
   final List<PlanningBlock> planMonth;
+  final PlannerBriefing briefing;
 
   bool get hasSignals =>
       accounts > 0 ||
@@ -352,8 +433,68 @@ class IntelligenceSnapshot {
       todayItems.isNotEmpty ||
       suggestions.isNotEmpty ||
       questionQueue.isNotEmpty ||
+      briefing.hasSignals ||
       planToday.isNotEmpty ||
       planningEvents.isNotEmpty;
+}
+
+class PlannerBriefing {
+  const PlannerBriefing({
+    required this.headline,
+    required this.todayCount,
+    required this.weekCount,
+    required this.monthCount,
+    required this.needsAnswerCount,
+    required this.blockedCount,
+    required this.focus,
+    required this.dueSoon,
+    required this.askNext,
+  });
+
+  factory PlannerBriefing.empty() {
+    return const PlannerBriefing(
+      headline: '',
+      todayCount: 0,
+      weekCount: 0,
+      monthCount: 0,
+      needsAnswerCount: 0,
+      blockedCount: 0,
+      focus: [],
+      dueSoon: [],
+      askNext: [],
+    );
+  }
+
+  factory PlannerBriefing.fromJson(Map<String, dynamic> json) {
+    return PlannerBriefing(
+      headline: json['headline']?.toString() ?? '',
+      todayCount: (json['today_count'] as num?)?.round() ?? 0,
+      weekCount: (json['week_count'] as num?)?.round() ?? 0,
+      monthCount: (json['month_count'] as num?)?.round() ?? 0,
+      needsAnswerCount: (json['needs_answer_count'] as num?)?.round() ?? 0,
+      blockedCount: (json['blocked_count'] as num?)?.round() ?? 0,
+      focus: _stringList(json['focus']),
+      dueSoon: _stringList(json['due_soon']),
+      askNext: _stringList(json['ask_next']),
+    );
+  }
+
+  final String headline;
+  final int todayCount;
+  final int weekCount;
+  final int monthCount;
+  final int needsAnswerCount;
+  final int blockedCount;
+  final List<String> focus;
+  final List<String> dueSoon;
+  final List<String> askNext;
+
+  bool get hasSignals =>
+      headline.isNotEmpty ||
+      todayCount > 0 ||
+      weekCount > 0 ||
+      needsAnswerCount > 0 ||
+      focus.isNotEmpty;
 }
 
 List<PlanningEventSummary> _planningAgendaList(
@@ -507,6 +648,48 @@ class PlanningQuestion {
   final String lastProgressNote;
 }
 
+class PlanningEventDraft {
+  const PlanningEventDraft({
+    required this.eventType,
+    required this.title,
+    required this.project,
+    required this.idea,
+    required this.deadline,
+    required this.plannedStart,
+    required this.plannedMinutes,
+    required this.workDone,
+    required this.workLeft,
+    required this.repoUrl,
+  });
+
+  final String eventType;
+  final String title;
+  final String project;
+  final String idea;
+  final String deadline;
+  final String plannedStart;
+  final int plannedMinutes;
+  final String workDone;
+  final String workLeft;
+  final String repoUrl;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'event_type': eventType,
+      'title': title,
+      'project': project,
+      'idea': idea,
+      'deadline': deadline,
+      'planned_start': plannedStart,
+      'planned_minutes': plannedMinutes,
+      'work_done': workDone,
+      'work_left': workLeft,
+      'repo_url': repoUrl,
+      'status': 'planned',
+    };
+  }
+}
+
 class AgentWorker {
   const AgentWorker({
     required this.id,
@@ -551,6 +734,14 @@ List<String> _stringListFromPlanItems(dynamic raw, String field) {
       })
       .where((item) => item.trim().isNotEmpty)
       .take(8)
+      .toList();
+}
+
+List<String> _stringList(dynamic raw) {
+  if (raw is! List<dynamic>) return const [];
+  return raw
+      .map((item) => item.toString())
+      .where((item) => item.trim().isNotEmpty)
       .toList();
 }
 

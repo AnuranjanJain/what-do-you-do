@@ -145,6 +145,22 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<void> createPlanningEvent(PlanningEventDraft draft) async {
+    if (draft.title.trim().isEmpty) return;
+    message = 'Adding ${draft.title} to AiOS planner...';
+    notifyListeners();
+    try {
+      await _agentApi.createPlanningEvent(draft);
+      message = 'Planner row added to AiOS.';
+      await refresh(silent: true);
+    } catch (error) {
+      message = error is Exception
+          ? error.toString().replaceFirst('Exception: ', '')
+          : 'Could not add planner row to AiOS.';
+      notifyListeners();
+    }
+  }
+
   void toggleTheme() {
     darkMode = !darkMode;
     notifyListeners();

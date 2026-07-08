@@ -989,6 +989,12 @@ class IntelligencePage extends StatelessWidget {
         children: [
           _AgentConnectionBanner(agent: controller.agent),
           const SizedBox(height: 12),
+          _ReadinessPanel(readiness: controller.agent.readiness),
+          const SizedBox(height: 12),
+          _QuickAddPlanningEventPanel(onCreate: controller.createPlanningEvent),
+          const SizedBox(height: 12),
+          _BriefingPanel(briefing: intelligence.briefing),
+          const SizedBox(height: 12),
           _QuestionQueuePanel(
             questions: intelligence.questionQueue,
             onAnswer: controller.answerPlanningQuestion,
@@ -1094,6 +1100,104 @@ class IntelligencePage extends StatelessWidget {
   }
 }
 
+class _BriefingPanel extends StatelessWidget {
+  const _BriefingPanel({required this.briefing});
+  final PlannerBriefing briefing;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      eyebrow: 'Daily briefing',
+      title: briefing.headline.isEmpty
+          ? 'Waiting for planner signals'
+          : briefing.headline,
+      child: briefing.hasSignals
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final horizontal = constraints.maxWidth > 760;
+                final children = [
+                  _BriefingColumn(
+                    label: 'Focus',
+                    items: briefing.focus,
+                    empty: 'No focused block yet.',
+                  ),
+                  _BriefingColumn(
+                    label: 'Due soon',
+                    items: briefing.dueSoon,
+                    empty: 'No deadlines this week.',
+                  ),
+                  _BriefingColumn(
+                    label: 'Ask next',
+                    items: briefing.askNext,
+                    empty: 'No questions waiting.',
+                  ),
+                ];
+                if (!horizontal) {
+                  return Column(
+                    children: [
+                      for (final child in children) ...[
+                        child,
+                        if (child != children.last) const SizedBox(height: 10),
+                      ],
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final child in children) ...[
+                      Expanded(child: child),
+                      if (child != children.last) const SizedBox(width: 12),
+                    ],
+                  ],
+                );
+              },
+            )
+          : const _EmptyState(
+              message:
+                  'Connect sources or add planning rows to generate a local briefing.',
+            ),
+    );
+  }
+}
+
+class _BriefingColumn extends StatelessWidget {
+  const _BriefingColumn({
+    required this.label,
+    required this.items,
+    required this.empty,
+  });
+  final String label;
+  final List<String> items;
+  final String empty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          Text(
+            items.isEmpty ? empty : items.take(3).join('\n'),
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PlanBlocksPanel extends StatelessWidget {
   const _PlanBlocksPanel({required this.intelligence});
   final IntelligenceSnapshot intelligence;
@@ -1163,6 +1267,491 @@ class _PlanBlockTile extends StatelessWidget {
   }
 }
 
+class _ReadinessPanel extends StatelessWidget {
+  const _ReadinessPanel({required this.readiness});
+  final ReadinessSnapshot readiness;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      eyebrow: 'Real-life readiness',
+      title: readiness.hasItems
+          ? '${readiness.ready}/${readiness.total} systems ready'
+          : 'Waiting for AiOS setup state',
+      trailing: readiness.hasItems
+          ? Chip(
+              label: Text(readiness.allReady ? 'Ready' : 'Setup'),
+              backgroundColor: readiness.allReady
+                  ? AppColors.mint
+                  : AppColors.yellow.withValues(alpha: 0.5),
+            )
+          : null,
+      child: readiness.hasItems
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth > 900
+                    ? 3
+                    : constraints.maxWidth > 560
+                    ? 2
+                    : 1;
+                return GridView.count(
+                  crossAxisCount: columns,
+                  childAspectRatio: columns == 1 ? 3.3 : 2.65,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: readiness.items
+                      .map((item) => _ReadinessTile(item: item))
+                      .toList(),
+                );
+              },
+            )
+          : const Text(
+              'Open AiOS once so WDYD can read Gmail, planner, Ollama, and GitHub setup status.',
+            ),
+    );
+  }
+}
+
+class _ReadinessTile extends StatelessWidget {
+  const _ReadinessTile({required this.item});
+  static const _readyColor = Color(0xFF3C7A57);
+  final ReadinessItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: item.ok
+            ? AppColors.mint.withValues(alpha: 0.3)
+            : Colors.white.withValues(alpha: 0.48),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: item.ok
+              ? _readyColor.withValues(alpha: 0.28)
+              : Colors.black.withValues(alpha: 0.06),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            item.ok ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+            size: 20,
+            color: item.ok ? _readyColor : Colors.black54,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.detail,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAddPlanningEventPanel extends StatefulWidget {
+  const _QuickAddPlanningEventPanel({required this.onCreate});
+  final Future<void> Function(PlanningEventDraft draft) onCreate;
+
+  @override
+  State<_QuickAddPlanningEventPanel> createState() =>
+      _QuickAddPlanningEventPanelState();
+}
+
+class _QuickAddPlanningEventPanelState
+    extends State<_QuickAddPlanningEventPanel> {
+  final _title = TextEditingController();
+  final _project = TextEditingController();
+  final _idea = TextEditingController();
+  final _workDone = TextEditingController();
+  final _workLeft = TextEditingController();
+  final _repoUrl = TextEditingController();
+  String _eventType = 'goal';
+  DateTime? _deadline;
+  DateTime? _plannedStart;
+  int _plannedMinutes = 45;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _project.dispose();
+    _idea.dispose();
+    _workDone.dispose();
+    _workLeft.dispose();
+    _repoUrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      eyebrow: 'Quick add',
+      title: 'Create a planner row',
+      trailing: FilledButton.icon(
+        onPressed: _saving || _title.text.trim().isEmpty ? null : _save,
+        icon: _saving
+            ? const SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.add_task_outlined),
+        label: Text(_saving ? 'Saving' : 'Add row'),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth > 760;
+          final firstRow = [
+            Expanded(
+              flex: 2,
+              child: _TextInput(
+                controller: _title,
+                label: 'Event title',
+                icon: Icons.flag_outlined,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _EventTypeMenu(
+                value: _eventType,
+                onChanged: (value) => setState(() => _eventType = value),
+              ),
+            ),
+          ];
+          final secondRow = [
+            Expanded(
+              child: _TextInput(
+                controller: _project,
+                label: 'Project or goal',
+                icon: Icons.workspaces_outline,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _TextInput(
+                controller: _repoUrl,
+                label: 'Repo URL',
+                icon: Icons.code_outlined,
+              ),
+            ),
+          ];
+          return Column(
+            children: [
+              if (wide)
+                Row(children: firstRow)
+              else ...[
+                firstRow.first,
+                const SizedBox(height: 10),
+                firstRow.last,
+              ],
+              const SizedBox(height: 10),
+              if (wide)
+                Row(children: secondRow)
+              else ...[
+                secondRow.first,
+                const SizedBox(height: 10),
+                secondRow.last,
+              ],
+              const SizedBox(height: 10),
+              _ScheduleRow(
+                deadline: _deadline,
+                plannedStart: _plannedStart,
+                minutes: _plannedMinutes,
+                onDeadline: (value) => setState(() => _deadline = value),
+                onPlannedStart: (value) =>
+                    setState(() => _plannedStart = value),
+                onMinutes: (value) => setState(() => _plannedMinutes = value),
+              ),
+              const SizedBox(height: 10),
+              _TextInput(
+                controller: _idea,
+                label: 'Idea and context',
+                icon: Icons.lightbulb_outline,
+                minLines: 2,
+              ),
+              const SizedBox(height: 10),
+              _TextInput(
+                controller: _workDone,
+                label: 'Work done',
+                icon: Icons.done_all_outlined,
+                minLines: 2,
+              ),
+              const SizedBox(height: 10),
+              _TextInput(
+                controller: _workLeft,
+                label: 'Work left / next action',
+                icon: Icons.pending_actions_outlined,
+                minLines: 2,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    await widget.onCreate(
+      PlanningEventDraft(
+        eventType: _eventType,
+        title: _title.text.trim(),
+        project: _project.text.trim(),
+        idea: _idea.text.trim(),
+        deadline: _deadline?.toIso8601String() ?? '',
+        plannedStart: _plannedStart?.toIso8601String() ?? '',
+        plannedMinutes: _plannedMinutes,
+        workDone: _workDone.text.trim(),
+        workLeft: _workLeft.text.trim(),
+        repoUrl: _repoUrl.text.trim(),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _title.clear();
+      _project.clear();
+      _idea.clear();
+      _workDone.clear();
+      _workLeft.clear();
+      _repoUrl.clear();
+      _deadline = null;
+      _plannedStart = null;
+      _plannedMinutes = 45;
+    });
+  }
+}
+
+class _EventTypeMenu extends StatelessWidget {
+  const _EventTypeMenu({required this.value, required this.onChanged});
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: const InputDecoration(
+        labelText: 'Type',
+        prefixIcon: Icon(Icons.category_outlined),
+        border: OutlineInputBorder(),
+      ),
+      items: const [
+        DropdownMenuItem(value: 'goal', child: Text('Goal')),
+        DropdownMenuItem(value: 'hackathon', child: Text('Hackathon')),
+        DropdownMenuItem(value: 'repo', child: Text('Repo')),
+        DropdownMenuItem(value: 'learning_video', child: Text('Learning')),
+        DropdownMenuItem(value: 'manual', child: Text('Manual')),
+      ],
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+    );
+  }
+}
+
+class _TextInput extends StatelessWidget {
+  const _TextInput({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.minLines = 1,
+    this.onChanged,
+  });
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final int minLines;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      minLines: minLines,
+      maxLines: minLines == 1 ? 1 : 4,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+}
+
+class _ScheduleRow extends StatelessWidget {
+  const _ScheduleRow({
+    required this.deadline,
+    required this.plannedStart,
+    required this.minutes,
+    required this.onDeadline,
+    required this.onPlannedStart,
+    required this.onMinutes,
+  });
+  final DateTime? deadline;
+  final DateTime? plannedStart;
+  final int minutes;
+  final ValueChanged<DateTime?> onDeadline;
+  final ValueChanged<DateTime?> onPlannedStart;
+  final ValueChanged<int> onMinutes;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth > 760;
+        final children = [
+          Expanded(
+            child: _DateTimeButton(
+              label: 'Deadline',
+              value: deadline,
+              icon: Icons.event_outlined,
+              onChanged: onDeadline,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _DateTimeButton(
+              label: 'Planned start',
+              value: plannedStart,
+              icon: Icons.schedule_outlined,
+              onChanged: onPlannedStart,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _MinutesStepper(value: minutes, onChanged: onMinutes),
+          ),
+        ];
+        if (wide) return Row(children: children);
+        return Column(
+          children: [
+            children[0],
+            const SizedBox(height: 10),
+            children[2],
+            const SizedBox(height: 10),
+            children[4],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DateTimeButton extends StatelessWidget {
+  const _DateTimeButton({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onChanged,
+  });
+  final String label;
+  final DateTime? value;
+  final IconData icon;
+  final ValueChanged<DateTime?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () => _pick(context),
+      icon: Icon(icon),
+      label: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          value == null ? label : '$label ${_formatDraftDate(value!)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(56),
+        alignment: Alignment.centerLeft,
+      ),
+    );
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: value ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 3),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(value ?? now),
+    );
+    if (time == null) return;
+    onChanged(
+      DateTime(date.year, date.month, date.day, time.hour, time.minute),
+    );
+  }
+}
+
+class _MinutesStepper extends StatelessWidget {
+  const _MinutesStepper({required this.value, required this.onChanged});
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black.withValues(alpha: 0.22)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.timer_outlined),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$value min',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Less time',
+            onPressed: value <= 15 ? null : () => onChanged(value - 15),
+            icon: const Icon(Icons.remove),
+          ),
+          IconButton(
+            tooltip: 'More time',
+            onPressed: () => onChanged(value + 15),
+            icon: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _QuestionQueuePanel extends StatelessWidget {
   const _QuestionQueuePanel({required this.questions, required this.onAnswer});
   final List<PlanningQuestion> questions;
@@ -1221,6 +1810,8 @@ class _QuestionTile extends StatelessWidget {
           if (question.project.isNotEmpty) question.project,
           if (question.deadline.isNotEmpty)
             'Due ${_shortDate(question.deadline)}',
+          if (question.lastProgressNote.isNotEmpty)
+            'Last: ${question.lastProgressNote}',
         ].join(' - '),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -1393,6 +1984,15 @@ class _PlanningEventTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                  if (event.lastProgressNote.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Latest note: ${event.lastProgressNote}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: muted,
                     ),
                   ],
                   if (event.repoLatestActivity.isNotEmpty) ...[
@@ -1765,6 +2365,8 @@ class AgentPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _AgentConnectionBanner(agent: agent),
+          const SizedBox(height: 12),
+          _ReadinessPanel(readiness: agent.readiness),
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {

@@ -44,6 +44,11 @@ class AgentDesktopApi {
     );
   }
 
+  Future<void> createPlanningEvent(PlanningEventDraft draft) async {
+    final pairing = await _discoverPairing();
+    await _request(pairing, 'POST', '/api/planning-events', body: draft.toJson());
+  }
+
   Future<_Pairing> _discoverPairing() async {
     for (final baseUrl in _candidateBaseUrls()) {
       try {

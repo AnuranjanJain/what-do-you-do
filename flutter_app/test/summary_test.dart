@@ -92,6 +92,7 @@ void main() {
                 'repo_url': 'https://github.com/anura/flightiq',
                 'repo_latest_activity': '2026-06-18: add dashboard',
                 'next_question': 'What changed in FlightIQ?',
+                'last_progress_note': 'Finished pitch copy.',
               },
             ],
             'agenda': {
@@ -112,6 +113,7 @@ void main() {
                   'repo_url': 'https://github.com/anura/flightiq',
                   'repo_latest_activity': '2026-06-18: add dashboard',
                   'next_question': 'What changed in FlightIQ?',
+                  'last_progress_note': 'Finished pitch copy.',
                 },
               ],
               'month': [
@@ -130,6 +132,7 @@ void main() {
                   'repo_url': 'https://github.com/anura/flightiq',
                   'repo_latest_activity': '2026-06-18: add dashboard',
                   'next_question': 'What changed in FlightIQ?',
+                  'last_progress_note': 'Finished pitch copy.',
                 },
               ],
             },
@@ -162,6 +165,17 @@ void main() {
                 },
               ],
             },
+            'briefing': {
+              'headline': '1 active block this week.',
+              'today_count': 0,
+              'week_count': 1,
+              'month_count': 1,
+              'needs_answer_count': 1,
+              'blocked_count': 0,
+              'focus': ['Build FlightIQ demo'],
+              'due_soon': ['Build FlightIQ demo'],
+              'ask_next': ['What changed in FlightIQ?'],
+            },
             'question_queue': [
               {
                 'event_id': 7,
@@ -171,12 +185,32 @@ void main() {
                 'event_type': 'hackathon',
                 'status': 'planned',
                 'deadline': '2026-06-21T09:00:00',
+                'last_progress_note': 'Finished pitch copy.',
               },
             ],
           },
         },
         'latest_opportunity': {'title': 'Backend Intern Opening'},
         'latest_activity': {'agent_summary': 'Focus drift detected.'},
+        'readiness': {
+          'ready': 5,
+          'total': 7,
+          'all_ready': false,
+          'items': [
+            {
+              'id': 'gmail_account',
+              'label': 'Gmail account',
+              'ok': true,
+              'detail': '1 account connected, 1 syncing',
+            },
+            {
+              'id': 'planner',
+              'label': 'Planner rows',
+              'ok': true,
+              'detail': '1 real-life rows ready, 1 waiting for your answer.',
+            },
+          ],
+        },
         'reminders': [
           {'id': 1, 'title': 'Follow up', 'due_at': '2026-06-18'},
         ],
@@ -220,6 +254,10 @@ void main() {
     expect(snapshot.wellbeingMinutes, 49);
     expect(snapshot.latestOpportunityTitle, 'Backend Intern Opening');
     expect(snapshot.intelligence.accounts, 2);
+    expect(snapshot.readiness.ready, 5);
+    expect(snapshot.readiness.total, 7);
+    expect(snapshot.readiness.allReady, isFalse);
+    expect(snapshot.readiness.items.first.label, 'Gmail account');
     expect(snapshot.intelligence.urgentEmails, 3);
     expect(snapshot.intelligence.todayItems.single, 'Reply to Client A');
     expect(snapshot.intelligence.weeklyItems.single, 'Project work');
@@ -238,9 +276,19 @@ void main() {
       snapshot.intelligence.planMonth.single.nextAction,
       'Finish dashboard and video.',
     );
+    expect(snapshot.intelligence.briefing.weekCount, 1);
+    expect(snapshot.intelligence.briefing.focus.single, 'Build FlightIQ demo');
     expect(
       snapshot.intelligence.questionQueue.single.question,
       'What changed in FlightIQ?',
+    );
+    expect(
+      snapshot.intelligence.questionQueue.single.lastProgressNote,
+      'Finished pitch copy.',
+    );
+    expect(
+      snapshot.intelligence.planningEvents.single.lastProgressNote,
+      'Finished pitch copy.',
     );
   });
 
@@ -279,6 +327,7 @@ void main() {
         eventType: 'hackathon',
         status: 'planned',
         deadline: '',
+        lastProgressNote: '',
       ),
       'Finished the repo setup and wrote notes.',
     );
