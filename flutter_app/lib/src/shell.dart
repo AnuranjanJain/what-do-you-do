@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'app_controller.dart';
+import 'motion.dart';
 import 'models.dart';
 import 'theme.dart';
 
@@ -63,9 +64,12 @@ class _AppShellState extends State<AppShell> {
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(wide ? 24 : 0),
                       ),
-                      child: _PageBody(
-                        index: selectedIndex,
-                        controller: controller,
+                      child: PageMotion(
+                        motionKey: selectedIndex,
+                        child: _PageBody(
+                          index: selectedIndex,
+                          controller: controller,
+                        ),
                       ),
                     ),
                   ),
@@ -191,13 +195,8 @@ class _StatusDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: online ? 'Collector online' : 'Collector offline',
-      child: Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(
-          color: online ? const Color(0xFF42A86B) : const Color(0xFFE66B6B),
-          shape: BoxShape.circle,
-        ),
+      child: PulsingStatusDot(
+        color: online ? const Color(0xFF42A86B) : const Color(0xFFE66B6B),
       ),
     );
   }
@@ -262,36 +261,46 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: selected
-          ? (dark ? AppColors.yellow : AppColors.ink)
-          : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
+    return AnimatedContainer(
+      duration: AppMotion.standard,
+      curve: AppMotion.emphasized,
+      decoration: BoxDecoration(
+        color: selected
+            ? (dark ? AppColors.yellow : AppColors.ink)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: SizedBox(
-          height: 42,
-          child: Row(
-            children: [
-              const SizedBox(width: 12),
-              Icon(
-                destination.icon,
-                size: 18,
-                color: selected ? (dark ? AppColors.ink : Colors.white) : null,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                destination.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: SizedBox(
+            height: 42,
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                Icon(
+                  destination.icon,
+                  size: 18,
                   color: selected
                       ? (dark ? AppColors.ink : Colors.white)
                       : null,
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Text(
+                  destination.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    color: selected
+                        ? (dark ? AppColors.ink : Colors.white)
+                        : null,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -681,30 +690,35 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: dark ? Colors.white.withValues(alpha: 0.05) : color,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          CircleAvatar(
-            radius: 15,
-            backgroundColor: AppColors.yellow,
-            foregroundColor: AppColors.ink,
-            child: Icon(icon, size: 17),
-          ),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          Text(value, style: const TextStyle(fontSize: 26)),
-          Text(
-            detail,
-            style: const TextStyle(color: Colors.grey, fontSize: 11),
-          ),
-        ],
+    return HoverLift(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: dark ? Colors.white.withValues(alpha: 0.05) : color,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            CircleAvatar(
+              radius: 15,
+              backgroundColor: AppColors.yellow,
+              foregroundColor: AppColors.ink,
+              child: Icon(icon, size: 17),
+            ),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            Text(value, style: const TextStyle(fontSize: 26)),
+            Text(
+              detail,
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:what_do_you_do/src/app_controller.dart';
 import 'package:what_do_you_do/src/models.dart';
+import 'package:what_do_you_do/src/motion.dart';
 import 'package:what_do_you_do/src/shell.dart';
 import 'package:what_do_you_do/src/theme.dart';
 
@@ -55,6 +56,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Welcome back.'), findsOneWidget);
+      expect(find.byType(PageMotion), findsOneWidget);
+      expect(find.byType(PulsingStatusDot), findsOneWidget);
       await tester.tap(find.text('Planner').first);
       await tester.pumpAndSettle();
       final pageScroll = find.byType(Scrollable).first;
