@@ -37,6 +37,11 @@
 
 Both read the same local collector data, keep raw activity on-device, and can optionally talk to AiOS / Project AI Agent through loopback-only approved summaries.
 
+| App | Job |
+| --- | --- |
+| **What Do You Do** | Observes activity and explains where the day went. |
+| **[AiOS Assistant](https://github.com/AnuranjanJain/aios-assistant)** | Connects mail, projects and memory, then plans what should happen next. |
+
 WDYD v2 keeps the boundary clean:
 
 - **AiOS owns Email Intelligence**: Gmail OAuth, encrypted tokens, local email sync, Ollama analysis, semantic search, and daily/weekly planning.
