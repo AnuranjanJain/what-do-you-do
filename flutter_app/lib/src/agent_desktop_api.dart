@@ -18,6 +18,8 @@ class AgentDesktopApi {
       _get(pairing, '/api/hackathons'),
       _get(pairing, '/api/placements'),
       _get(pairing, '/api/neopat'),
+      _get(pairing, '/api/projects/context'),
+      _get(pairing, '/api/college/pat'),
     ]);
 
     return AgentDesktopSnapshot.fromJson(
@@ -28,6 +30,8 @@ class AgentDesktopApi {
       hackathons: responses[3],
       placements: responses[4],
       neopat: responses[5],
+      projects: responses[6],
+      college: responses[7],
     );
   }
 

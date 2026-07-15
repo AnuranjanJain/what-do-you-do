@@ -148,6 +148,8 @@ class AgentDesktopSnapshot {
     required this.dataDir,
     required this.importsDir,
     required this.updatedAt,
+    this.projects = const ProjectContextSnapshot.empty(),
+    this.college = const CollegeWorkSnapshot.empty(),
   });
 
   factory AgentDesktopSnapshot.disconnected(String message) {
@@ -175,6 +177,8 @@ class AgentDesktopSnapshot {
       dataDir: '',
       importsDir: '',
       updatedAt: '',
+      projects: const ProjectContextSnapshot.empty(),
+      college: const CollegeWorkSnapshot.empty(),
     );
   }
 
@@ -186,6 +190,8 @@ class AgentDesktopSnapshot {
     required Map<String, dynamic> hackathons,
     required Map<String, dynamic> placements,
     required Map<String, dynamic> neopat,
+    Map<String, dynamic> projects = const {},
+    Map<String, dynamic> college = const {},
   }) {
     final stats = live['stats'] as Map<String, dynamic>? ?? const {};
     final latestActivity =
@@ -223,6 +229,8 @@ class AgentDesktopSnapshot {
       dataDir: desktop['data_dir']?.toString() ?? '',
       importsDir: desktop['imports_dir']?.toString() ?? '',
       updatedAt: live['updated_at']?.toString() ?? '',
+      projects: ProjectContextSnapshot.fromJson(projects),
+      college: CollegeWorkSnapshot.fromJson(college),
     );
   }
 
@@ -249,8 +257,202 @@ class AgentDesktopSnapshot {
   final String dataDir;
   final String importsDir;
   final String updatedAt;
+  final ProjectContextSnapshot projects;
+  final CollegeWorkSnapshot college;
 
   int get runningWorkers => workers.where((worker) => worker.running).length;
+}
+
+class ProjectContextSnapshot {
+  const ProjectContextSnapshot({
+    required this.projects,
+    required this.selected,
+  });
+  const ProjectContextSnapshot.empty() : projects = const [], selected = null;
+
+  factory ProjectContextSnapshot.fromJson(Map<String, dynamic> json) {
+    final projects = (json['projects'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ProjectContextItem.fromJson)
+        .toList();
+    final selectedJson = json['selected'];
+    ProjectContextItem? selected;
+    for (final item in projects) {
+      if (item.selected) {
+        selected = item;
+        break;
+      }
+    }
+    return ProjectContextSnapshot(
+      projects: projects,
+      selected: selectedJson is Map<String, dynamic>
+          ? ProjectContextItem.fromJson(selectedJson)
+          : selected,
+    );
+  }
+
+  final List<ProjectContextItem> projects;
+  final ProjectContextItem? selected;
+}
+
+class ProjectContextItem {
+  const ProjectContextItem({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.progress,
+    required this.repository,
+    required this.workingDirectory,
+    required this.selected,
+    required this.workDone,
+    required this.remainingWork,
+    required this.nextAction,
+    required this.timeline,
+  });
+
+  factory ProjectContextItem.fromJson(Map<String, dynamic> json) {
+    return ProjectContextItem(
+      id: (json['id'] as num?)?.round() ?? 0,
+      title: json['title']?.toString() ?? 'Untitled project',
+      status: json['status']?.toString() ?? 'open',
+      progress: (json['progress'] as num?)?.round() ?? 0,
+      repository: json['repository']?.toString() ?? '',
+      workingDirectory: json['working_directory']?.toString() ?? '',
+      selected: json['selected'] == true,
+      workDone: json['work_done']?.toString() ?? '',
+      remainingWork: json['remaining_work']?.toString() ?? '',
+      nextAction: json['next_action']?.toString() ?? '',
+      timeline: (json['timeline'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(ProjectTimelineEntry.fromJson)
+          .toList(),
+    );
+  }
+
+  final int id;
+  final String title;
+  final String status;
+  final int progress;
+  final String repository;
+  final String workingDirectory;
+  final bool selected;
+  final String workDone;
+  final String remainingWork;
+  final String nextAction;
+  final List<ProjectTimelineEntry> timeline;
+}
+
+class ProjectTimelineEntry {
+  const ProjectTimelineEntry({
+    required this.at,
+    required this.kind,
+    required this.title,
+  });
+
+  factory ProjectTimelineEntry.fromJson(Map<String, dynamic> json) {
+    return ProjectTimelineEntry(
+      at: json['at']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? 'update',
+      title: json['title']?.toString() ?? 'Project updated',
+    );
+  }
+
+  final String at;
+  final String kind;
+  final String title;
+}
+
+class CollegeWorkSnapshot {
+  const CollegeWorkSnapshot({
+    required this.date,
+    required this.status,
+    required this.hasClassToday,
+    required this.headline,
+    required this.time,
+    required this.location,
+    required this.bring,
+    required this.instructions,
+    required this.latestSummary,
+    required this.emailsScanned,
+    required this.nextEventDays,
+    required this.updates,
+  });
+
+  const CollegeWorkSnapshot.empty()
+    : date = '',
+      status = 'not_connected',
+      hasClassToday = false,
+      headline = 'No PAT mail has been detected yet',
+      time = '',
+      location = '',
+      bring = const [],
+      instructions = const [],
+      latestSummary = '',
+      emailsScanned = 0,
+      nextEventDays = null,
+      updates = const [];
+
+  factory CollegeWorkSnapshot.fromJson(Map<String, dynamic> json) {
+    return CollegeWorkSnapshot(
+      date: json['date']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'not_connected',
+      hasClassToday: json['has_class_today'] == true,
+      headline: json['headline']?.toString() ?? 'PAT status unavailable',
+      time: json['time']?.toString() ?? '',
+      location: json['location']?.toString() ?? '',
+      bring: _stringList(json['bring']),
+      instructions: _stringList(json['instructions']),
+      latestSummary: json['latest_summary']?.toString() ?? '',
+      emailsScanned: (json['emails_scanned'] as num?)?.toInt() ?? 0,
+      nextEventDays: (json['next_event_days'] as num?)?.toInt(),
+      updates: (json['updates'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(PatNotice.fromJson)
+          .toList(),
+    );
+  }
+
+  final String date;
+  final String status;
+  final bool hasClassToday;
+  final String headline;
+  final String time;
+  final String location;
+  final List<String> bring;
+  final List<String> instructions;
+  final String latestSummary;
+  final int emailsScanned;
+  final int? nextEventDays;
+  final List<PatNotice> updates;
+}
+
+class PatNotice {
+  const PatNotice({
+    required this.subject,
+    required this.sender,
+    required this.timestamp,
+    required this.eventDate,
+    required this.status,
+    required this.summary,
+  });
+
+  factory PatNotice.fromJson(Map<String, dynamic> json) {
+    return PatNotice(
+      subject: json['subject']?.toString() ?? 'PAT notice',
+      sender: json['sender']?.toString() ?? '',
+      timestamp: json['timestamp']?.toString() ?? '',
+      eventDate: json['event_date']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'scheduled',
+      summary: json['summary']?.toString() ?? '',
+    );
+  }
+
+  final String subject;
+  final String sender;
+  final String timestamp;
+  final String eventDate;
+  final String status;
+  final String summary;
 }
 
 class ReadinessSnapshot {

@@ -283,6 +283,50 @@ void main() {
         'placements': [{}, {}],
         'unread_updates': 0,
       },
+      projects: {
+        'selected_project_id': 8,
+        'selected': {
+          'id': 8,
+          'title': 'FlightIQ',
+          'status': 'open',
+          'progress': 64,
+          'repository': 'https://github.com/anura/flightiq',
+          'working_directory': 'C:/work/flightiq',
+          'selected': true,
+          'work_done': 'Dashboard completed.',
+          'remaining_work': 'Finish evaluation.',
+          'next_action': 'Run tests.',
+          'timeline': [
+            {
+              'at': '2026-07-15T09:00:00',
+              'kind': 'commit',
+              'title': 'Add dashboard',
+            },
+          ],
+        },
+        'projects': [],
+      },
+      college: {
+        'date': '2026-07-15',
+        'status': 'scheduled',
+        'has_class_today': true,
+        'headline': 'PAT class is scheduled today',
+        'time': '10:30 am',
+        'location': 'Lab 2',
+        'bring': ['laptop', 'college ID card'],
+        'instructions': ['Attendance is mandatory.'],
+        'latest_summary': 'PAT class today.',
+        'updates': [
+          {
+            'subject': 'PAT class today',
+            'sender': 'pat@college.edu',
+            'timestamp': '2026-07-15T08:00:00',
+            'event_date': '2026-07-15',
+            'status': 'scheduled',
+            'summary': 'Bring a laptop.',
+          },
+        ],
+      },
     );
 
     expect(snapshot.connected, isTrue);
@@ -305,6 +349,12 @@ void main() {
     expect(snapshot.intelligence.urgentEmails, 3);
     expect(snapshot.intelligence.todayItems.single, 'Reply to Client A');
     expect(snapshot.intelligence.weeklyItems.single, 'Project work');
+    expect(snapshot.projects.selected?.title, 'FlightIQ');
+    expect(snapshot.projects.selected?.progress, 64);
+    expect(snapshot.projects.selected?.timeline.single.kind, 'commit');
+    expect(snapshot.college.hasClassToday, isTrue);
+    expect(snapshot.college.location, 'Lab 2');
+    expect(snapshot.college.bring, contains('laptop'));
     expect(
       snapshot.intelligence.planningEvents.single.title,
       'Build FlightIQ demo',

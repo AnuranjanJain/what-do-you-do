@@ -24,6 +24,38 @@ export type AiosSyncResult = {
   locked: boolean;
 };
 
+export type PatNotice = {
+  email_id: number;
+  subject: string;
+  sender: string;
+  timestamp: string | null;
+  event_date: string | null;
+  status: "scheduled" | "cancelled";
+  time: string;
+  location: string;
+  bring: string[];
+  instructions: string[];
+  summary: string;
+};
+
+export type PatCollegeSummary = {
+  ok: boolean;
+  date: string;
+  status: "scheduled" | "cancelled" | "upcoming" | "no_class_found" | "not_connected";
+  has_class_today: boolean;
+  headline: string;
+  time: string;
+  location: string;
+  bring: string[];
+  instructions: string[];
+  latest_subject: string;
+  latest_summary: string;
+  emails_scanned: number;
+  next_event: PatNotice | null;
+  next_event_days: number | null;
+  updates: PatNotice[];
+};
+
 export function getAiosBaseUrl(): string {
   const saved = window.localStorage.getItem(aiosBaseUrlStorageKey);
 
@@ -98,6 +130,39 @@ export async function checkAiosConnection(): Promise<AiosLiveStatus> {
   }
 
   throw lastError instanceof Error ? lastError : new Error("Unable to reach local AiOS Desktop.");
+}
+
+export async function fetchPatCollegeSummary(): Promise<PatCollegeSummary> {
+  let lastError: unknown = null;
+
+  for (const baseUrl of getAiosCandidateBaseUrls()) {
+    try {
+      const response = await fetch(`${baseUrl}/api/college/pat`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+
+      if (response.status === 401) {
+        throw new Error("AiOS is locked. Unlock AiOS, then refresh College Work.");
+      }
+      if (!response.ok) {
+        lastError = new Error(`PAT mail summary responded with ${response.status}`);
+        continue;
+      }
+
+      window.localStorage.setItem(aiosBaseUrlStorageKey, baseUrl);
+      return response.json() as Promise<PatCollegeSummary>;
+    } catch (error) {
+      lastError = error;
+      if (error instanceof Error && error.message.startsWith("AiOS is locked")) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Start AiOS and connect Gmail to read PAT notices.");
 }
 
 export async function syncActivitySessions(sessions: ActivitySession[]): Promise<AiosSyncResult> {
