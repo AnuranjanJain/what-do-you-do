@@ -26,6 +26,7 @@ class _AppShellState extends State<AppShell> {
     _Destination('Planner', Icons.auto_awesome_outlined),
     _Destination('Timeline', Icons.monitor_heart_outlined),
     _Destination('Hackathons', Icons.emoji_events_outlined),
+    _Destination('College Work', Icons.school_outlined),
     _Destination('Privacy', Icons.shield_outlined),
     _Destination('AI Agent', Icons.smart_toy_outlined),
     _Destination('Widgets', Icons.widgets_outlined),
@@ -348,9 +349,10 @@ class _PageBody extends StatelessWidget {
       1 => IntelligencePage(controller: controller),
       2 => TimelinePage(controller: controller),
       3 => HackathonsPage(controller: controller),
-      4 => PrivacyPage(controller: controller),
-      5 => AgentPage(controller: controller),
-      6 => WidgetsPage(controller: controller),
+      4 => CollegeWorkPage(controller: controller),
+      5 => PrivacyPage(controller: controller),
+      6 => AgentPage(controller: controller),
+      7 => WidgetsPage(controller: controller),
       _ => SettingsPage(controller: controller),
     };
   }
@@ -1008,6 +1010,8 @@ class IntelligencePage extends StatelessWidget {
         children: [
           _AgentConnectionBanner(agent: controller.agent),
           const SizedBox(height: 12),
+          _ProjectContextPanel(context: controller.agent.projects),
+          const SizedBox(height: 12),
           _ReadinessPanel(readiness: controller.agent.readiness),
           const SizedBox(height: 12),
           _QuickAddPlanningEventPanel(onCreate: controller.createPlanningEvent),
@@ -1113,6 +1117,273 @@ class IntelligencePage extends StatelessWidget {
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class CollegeWorkPage extends StatelessWidget {
+  const CollegeWorkPage({required this.controller, super.key});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final college = controller.agent.college;
+    return _StandardPage(
+      eyebrow: 'College work · PAT',
+      title: college.headline,
+      subtitle:
+          'AiOS scans connected Gmail accounts locally for PAT schedules, changes, instructions, and things you need to bring.',
+      action: IconButton(
+        tooltip: 'Sync PAT mail',
+        onPressed: controller.syncIntelligence,
+        icon: const Icon(Icons.sync),
+      ),
+      child: Column(
+        children: [
+          _AgentConnectionBanner(agent: controller.agent),
+          const SizedBox(height: 12),
+          _Panel(
+            eyebrow: college.hasClassToday
+                ? 'Class today'
+                : 'Today · ${college.date.isEmpty ? 'waiting for AiOS' : college.date}',
+            title: college.headline,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  college.latestSummary.isEmpty
+                      ? 'Run Sync after connecting your college Gmail account in AiOS.'
+                      : college.latestSummary,
+                  style: const TextStyle(color: Colors.grey, height: 1.45),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _CollegeFact(
+                      icon: Icons.schedule_outlined,
+                      label: college.time.isEmpty
+                          ? 'Time not stated'
+                          : college.time,
+                    ),
+                    _CollegeFact(
+                      icon: Icons.location_on_outlined,
+                      label: college.location.isEmpty
+                          ? 'Location not stated'
+                          : college.location,
+                    ),
+                    _CollegeFact(
+                      icon: college.hasClassToday
+                          ? Icons.check_circle_outline
+                          : Icons.info_outline,
+                      label: college.status.replaceAll('_', ' '),
+                    ),
+                    if (college.nextEventDays != null)
+                      _CollegeFact(
+                        icon: Icons.event_outlined,
+                        label: college.nextEventDays == 0
+                            ? 'PAT event today'
+                            : '${college.nextEventDays} days to next PAT event',
+                      ),
+                    _CollegeFact(
+                      icon: Icons.mail_outline,
+                      label: 'Latest ${college.emailsScanned} mails scanned',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bring = _Panel(
+                eyebrow: 'Prepare',
+                title: 'What to bring',
+                child: _TextList(
+                  items: college.bring,
+                  empty: 'No required items were found in recent PAT mail.',
+                ),
+              );
+              final instructions = _Panel(
+                eyebrow: 'Instructions',
+                title: 'What you need to know',
+                child: _TextList(
+                  items: college.instructions,
+                  empty: 'No special PAT instructions were detected.',
+                ),
+              );
+              if (constraints.maxWidth < 780) {
+                return Column(
+                  children: [bring, const SizedBox(height: 12), instructions],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: bring),
+                  const SizedBox(width: 12),
+                  Expanded(child: instructions),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _Panel(
+            eyebrow: 'Mail timeline',
+            title: 'Recent PAT notices',
+            child: college.updates.isEmpty
+                ? const _EmptyState(
+                    message:
+                        'No PAT messages yet. Connect college Gmail in AiOS Settings and press Sync.',
+                  )
+                : Column(
+                    children: [
+                      for (final notice in college.updates.take(12))
+                        _PatNoticeRow(notice: notice),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CollegeFact extends StatelessWidget {
+  const _CollegeFact({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17),
+          const SizedBox(width: 7),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PatNoticeRow extends StatelessWidget {
+  const _PatNoticeRow({required this.notice});
+  final PatNotice notice;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            notice.status == 'cancelled'
+                ? Icons.event_busy_outlined
+                : Icons.event_available_outlined,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notice.subject,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                if (notice.summary.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    notice.summary,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, height: 1.35),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    if (notice.eventDate.isNotEmpty) notice.eventDate,
+                    if (notice.sender.isNotEmpty) notice.sender,
+                  ].join(' · '),
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectContextPanel extends StatelessWidget {
+  const _ProjectContextPanel({required this.context});
+  final ProjectContextSnapshot context;
+
+  @override
+  Widget build(BuildContext context) {
+    final project = this.context.selected;
+    if (project == null) {
+      return const _Panel(
+        eyebrow: 'Selected project',
+        title: 'Choose a project in AiOS',
+        child: _EmptyState(
+          message:
+              'Open AiOS Projects to bind a GitHub repository and local working directory.',
+        ),
+      );
+    }
+    final timeline = project.timeline
+        .take(5)
+        .map((event) => '${event.kind.replaceAll('_', ' ')} · ${event.title}')
+        .toList();
+    return _Panel(
+      eyebrow: 'Selected project · ${project.status}',
+      title: '${project.title} · ${project.progress}%',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator(value: project.progress / 100),
+          const SizedBox(height: 12),
+          if (project.repository.isNotEmpty)
+            SelectableText('Repository: ${project.repository}'),
+          if (project.workingDirectory.isNotEmpty)
+            SelectableText('Working directory: ${project.workingDirectory}'),
+          const SizedBox(height: 10),
+          Text(
+            project.workDone.isEmpty
+                ? 'Work done: waiting for GitHub activity.'
+                : 'Work done: ${project.workDone}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            project.remainingWork.isEmpty
+                ? 'Next: ${project.nextAction}'
+                : 'Remaining: ${project.remainingWork}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.grey),
+          ),
+          if (timeline.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _TextList(items: timeline, empty: ''),
+          ],
         ],
       ),
     );

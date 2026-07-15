@@ -25,6 +25,7 @@ import {
   RefreshCw,
   StickyNote,
   Search,
+  School,
   Settings2,
   ShieldCheck,
   Sun,
@@ -58,10 +59,12 @@ import {
 import {
   AiosLiveStatus,
   AiosStatus,
+  PatCollegeSummary,
   checkAiosConnection,
   clearAiosSyncHistory,
   countPendingAiosSessions,
   getAiosBaseUrl,
+  fetchPatCollegeSummary,
   setAiosBaseUrl,
   syncActivitySessions,
 } from "./services/aios";
@@ -170,6 +173,9 @@ function App() {
   const [hackathonFeed, setHackathonFeed] = useState<HackathonFeed | null>(null);
   const [placementFeed, setPlacementFeed] = useState<PlacementFeed | null>(null);
   const [neopatFeed, setNeopatFeed] = useState<PlacementFeed | null>(null);
+  const [patCollege, setPatCollege] = useState<PatCollegeSummary | null>(null);
+  const [patMessage, setPatMessage] = useState("Reading PAT notices from local AiOS mail intelligence.");
+  const [patRefreshing, setPatRefreshing] = useState(false);
   const [hackathonMessage, setHackathonMessage] = useState("Loading local hackathon tracker.");
   const [hackathonSourceMessage, setHackathonSourceMessage] = useState("Connecting to AiOS sources.");
   const [placementSourceMessage, setPlacementSourceMessage] = useState("Connecting to placement sources.");
@@ -265,10 +271,12 @@ function App() {
     refreshHackathonFeed();
     refreshPlacementFeed();
     refreshNeoPatFeed();
+    refreshPatCollege();
     const intervalId = window.setInterval(() => {
       refreshHackathonFeed();
       refreshPlacementFeed();
       refreshNeoPatFeed();
+      refreshPatCollege();
     }, 30000);
     return () => window.clearInterval(intervalId);
   }, []);
@@ -374,6 +382,30 @@ function App() {
       );
     } catch (error) {
       setNeopatSourceMessage(error instanceof Error ? error.message : "Unable to read NeoPat sources from AiOS.");
+    }
+  }
+
+  async function refreshPatCollege() {
+    try {
+      const summary = await fetchPatCollegeSummary();
+      setPatCollege(summary);
+      setPatMessage(
+        summary.updates.length > 0
+          ? `${summary.updates.length} recent PAT notice${summary.updates.length === 1 ? "" : "s"} found in synced mail.`
+          : summary.latest_summary,
+      );
+    } catch (error) {
+      setPatMessage(error instanceof Error ? error.message : "Unable to read PAT mail intelligence.");
+    }
+  }
+
+  async function handleRefreshPatCollege() {
+    setPatRefreshing(true);
+    setPatMessage("Checking locally synced Gmail for PAT updates.");
+    try {
+      await refreshPatCollege();
+    } finally {
+      setPatRefreshing(false);
     }
   }
 
@@ -630,6 +662,10 @@ function App() {
           <a href="#hackathons">
             <Trophy size={15} />
             Hackathons
+          </a>
+          <a href="#college-work">
+            <School size={15} />
+            College Work
           </a>
           <a href="#privacy">
             <ShieldCheck size={15} />
@@ -976,6 +1012,13 @@ function App() {
               onTimeline={handleHackathonTimeline}
             />
           </section>
+
+          <CollegeWorkPanel
+            message={patMessage}
+            onRefresh={handleRefreshPatCollege}
+            refreshing={patRefreshing}
+            summary={patCollege}
+          />
 
           <section className="panel glass-panel" id="privacy">
             <div className="panel-heading">
@@ -1360,6 +1403,95 @@ function NoDataState({ selectedDate }: { selectedDate: string }) {
         keep the collector running, or return to Today.
       </p>
     </div>
+  );
+}
+
+function CollegeWorkPanel({
+  message,
+  onRefresh,
+  refreshing,
+  summary,
+}: {
+  message: string;
+  onRefresh: () => Promise<void>;
+  refreshing: boolean;
+  summary: PatCollegeSummary | null;
+}) {
+  return (
+    <section className="panel glass-panel college-work-panel" id="college-work">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">College Work</p>
+          <h2>PAT class briefing</h2>
+          <span className="section-note">{message}</span>
+        </div>
+        <button className="text-button" disabled={refreshing} onClick={onRefresh}>
+          <RefreshCw className={refreshing ? "spin" : ""} size={16} />
+          {refreshing ? "Checking" : "Refresh"}
+        </button>
+      </div>
+
+      {summary ? (
+        <>
+          <div className={`pat-today-card ${summary.status}`}>
+            <div className="pat-status-mark"><School size={22} /></div>
+            <div>
+              <span>Today, {summary.date}</span>
+              <strong>{summary.headline}</strong>
+              <p>{summary.latest_summary}</p>
+            </div>
+            <div className="pat-facts">
+              {summary.next_event_days !== null && (
+                <span><CalendarDays size={14} /> {summary.next_event_days === 0 ? "Today" : summary.next_event_days + " days to next PAT event"}</span>
+              )}
+              <span><Clock3 size={14} /> {summary.time || "Time not mentioned"}</span>
+              <span><MonitorSmartphone size={14} /> {summary.location || "Venue not mentioned"}</span>
+              <span><Inbox size={14} /> Latest {summary.emails_scanned || 0} mails scanned</span>
+            </div>
+          </div>
+
+          <div className="pat-detail-grid">
+            <article>
+              <span>What to bring</span>
+              {summary.bring.length ? (
+                <ul>{summary.bring.map((item) => <li key={item}>{item}</li>)}</ul>
+              ) : <p>No required items were mentioned.</p>}
+            </article>
+            <article>
+              <span>Instructions</span>
+              {summary.instructions.length ? (
+                <ul>{summary.instructions.map((item) => <li key={item}>{item}</li>)}</ul>
+              ) : <p>No special instructions were found.</p>}
+            </article>
+          </div>
+
+          <div className="pat-mail-timeline">
+            <span>Recent PAT mail timeline</span>
+            {summary.updates.length ? summary.updates.map((notice) => (
+              <article key={notice.email_id}>
+                <div className={`pat-timeline-dot ${notice.status}`} />
+                <time>{notice.event_date || notice.timestamp?.slice(0, 10) || "Date unknown"}</time>
+                <div>
+                  <strong>{notice.subject}</strong>
+                  <p>{notice.summary}</p>
+                  <small>{notice.sender}</small>
+                </div>
+              </article>
+            )) : (
+              <div className="compact-empty-state">
+                Connect Gmail in AiOS, run Sync, then return here. WDYD reads only the local PAT summary.
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="compact-empty-state">
+          <School size={24} />
+          <strong>PAT mail intelligence is waiting for AiOS</strong>
+          <p>{message}</p>
+        </div>
+      )}
+    </section>
   );
 }
 

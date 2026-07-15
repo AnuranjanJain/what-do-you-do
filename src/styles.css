@@ -415,6 +415,167 @@ h2 {
   grid-column: 1 / -1;
 }
 
+.college-work-panel {
+  grid-column: 1 / -1;
+  background:
+    radial-gradient(circle at 94% 8%, rgba(83, 198, 170, 0.22), transparent 30%),
+    color-mix(in srgb, var(--surface-strong) 76%, transparent);
+}
+
+.pat-today-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, #dff6eb 76%, var(--surface-strong));
+}
+
+:root[data-theme="dark"] .pat-today-card {
+  background: color-mix(in srgb, #18372d 52%, var(--surface-strong));
+}
+
+.pat-today-card.cancelled,
+.pat-today-card.no_class_found {
+  background: color-mix(in srgb, var(--accent-soft) 35%, var(--surface-strong));
+}
+
+.pat-status-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #102d25;
+  background: #74d8b8;
+}
+
+.pat-today-card > div:nth-child(2) {
+  min-width: 0;
+}
+
+.pat-today-card span,
+.pat-detail-grid article > span,
+.pat-mail-timeline > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.pat-today-card strong {
+  display: block;
+  margin: 4px 0;
+  color: var(--ink);
+  font-size: 19px;
+}
+
+.pat-today-card p,
+.pat-detail-grid p,
+.pat-mail-timeline p {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.pat-today-card p,
+.pat-mail-timeline p {
+  white-space: pre-line;
+}
+
+.pat-facts {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.pat-facts span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-transform: none;
+}
+
+.pat-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.pat-detail-grid article {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
+}
+
+.pat-detail-grid ul {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--ink);
+}
+
+.pat-mail-timeline {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.pat-mail-timeline article {
+  display: grid;
+  grid-template-columns: 12px 92px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 13px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.pat-timeline-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #68d3b0;
+}
+
+.pat-timeline-dot.cancelled {
+  background: #d88475;
+}
+
+.pat-mail-timeline time,
+.pat-mail-timeline small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pat-mail-timeline strong,
+.pat-mail-timeline small {
+  display: block;
+}
+
+.pat-mail-timeline p {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .pat-today-card,
+  .pat-detail-grid,
+  .pat-mail-timeline article {
+    grid-template-columns: 1fr;
+  }
+
+  .pat-facts {
+    min-width: 0;
+  }
+}
+
 .hackathon-form {
   margin-bottom: 18px;
   padding: 16px;
