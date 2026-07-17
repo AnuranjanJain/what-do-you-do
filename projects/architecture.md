@@ -17,7 +17,8 @@ Platform split for v1:
 
 - Linux uses the local React/Vite browser dashboard.
 - Windows uses the installed native Flutter desktop app.
-- Both clients read from the same local collector/API and local data store.
+- Windows collects in-process through Flutter/Win32 and stores local JSON under
+  `%LOCALAPPDATA%`; Linux keeps its local collector/API and Linux data store.
 - Tauri is historical migration reference unless removed in a later cleanup.
 
 ## App collaboration flow

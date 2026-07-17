@@ -32,9 +32,6 @@ The installer copies:
 - `what_do_you_do.exe`
 - `flutter_windows.dll`
 - Flutter `data/`
-- `start-collector.ps1`
-- `collector/local-activity-collector.mjs`
-- `collector/get-windows-activity.ps1`
 
 It also creates Desktop and Start Menu shortcuts and registers the app in the
 current user's Windows Installed Apps list.
@@ -45,14 +42,14 @@ The Settings screen can create user Startup folder shortcuts for:
 
 - launching the app at sign-in
 - launching the app hidden in the tray at sign-in
-- launching the packaged local collector at sign-in
 
 The native Windows runner keeps a tray icon alive. Closing or minimizing the
 window hides it instead of quitting; the Settings screen exposes the explicit
 exit action.
 
-The collector launcher is hidden, checks whether `http://127.0.0.1:17321/health`
-is already online, and starts Node only when needed.
+The Windows app collects foreground activity in-process through a native Win32
+method channel. It does not launch Node, PowerShell polling, or a collector HTTP
+server.
 
 Runtime data:
 
@@ -82,9 +79,7 @@ app/
 |-- what_do_you_do.exe
 |-- flutter_windows.dll
 |-- data/
-|-- start-collector.ps1
 |-- uninstall.ps1
-`-- collector/
 ```
 
 ## Validation checklist
@@ -101,6 +96,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\instal
 Then verify:
 
 - installed app launches
-- packaged collector files exist
-- `GET http://127.0.0.1:17321/health` returns `200`
-- Settings shows startup, background tray, collector, hide, and exit controls
+- live activity appears without a Node process or port `17321` listener
+- Settings shows startup, background tray, native activity, hide, and exit controls
