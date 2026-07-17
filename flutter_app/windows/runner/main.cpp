@@ -7,6 +7,19 @@
 
 namespace {
 
+constexpr wchar_t kSingleInstanceMutex[] =
+    L"Local\\WhatDoYouDoNativeFlutter";
+
+bool ActivateExistingWindow() {
+  HWND existing = FindWindowW(nullptr, L"What Do You Do");
+  if (existing == nullptr) {
+    return false;
+  }
+  ShowWindow(existing, SW_RESTORE);
+  SetForegroundWindow(existing);
+  return true;
+}
+
 Win32Window::Point GetCenteredWindowOrigin(const Win32Window::Size& size) {
   HMONITOR monitor = MonitorFromPoint({0, 0}, MONITOR_DEFAULTTOPRIMARY);
   MONITORINFO monitor_info{};
@@ -35,6 +48,13 @@ Win32Window::Point GetCenteredWindowOrigin(const Win32Window::Size& size) {
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  HANDLE instance_mutex = CreateMutexW(nullptr, TRUE, kSingleInstanceMutex);
+  if (instance_mutex != nullptr && GetLastError() == ERROR_ALREADY_EXISTS) {
+    ActivateExistingWindow();
+    CloseHandle(instance_mutex);
+    return EXIT_SUCCESS;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
@@ -63,6 +83,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   Win32Window::Size size(1280, 720);
   Win32Window::Point origin = GetCenteredWindowOrigin(size);
   if (!window.Create(L"What Do You Do", origin, size)) {
+    if (instance_mutex != nullptr) {
+      ReleaseMutex(instance_mutex);
+      CloseHandle(instance_mutex);
+    }
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
@@ -74,5 +98,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   ::CoUninitialize();
+  if (instance_mutex != nullptr) {
+    ReleaseMutex(instance_mutex);
+    CloseHandle(instance_mutex);
+  }
   return EXIT_SUCCESS;
 }
