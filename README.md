@@ -10,8 +10,8 @@
 
 <p align="center">
   <img alt="Local first" src="https://img.shields.io/badge/local--first-yes-FFD84D?style=for-the-badge&labelColor=1F211D" />
-  <img alt="Linux browser" src="https://img.shields.io/badge/linux-browser-DFF0E4?style=for-the-badge&labelColor=1F211D" />
-  <img alt="Windows app" src="https://img.shields.io/badge/windows-app-5ED9E8?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Windows app" src="https://img.shields.io/badge/Windows-native%20Flutter-5ED9E8?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Desktop only" src="https://img.shields.io/badge/browser%20server-not%20required-DFF0E4?style=for-the-badge&labelColor=1F211D" />
   <img alt="Privacy" src="https://img.shields.io/badge/raw%20data-on%20device-DFF0E4?style=for-the-badge&labelColor=1F211D" />
 </p>
 
@@ -30,12 +30,13 @@
 
 ## The Vibe
 
-`What Do You Do` is a private activity OS with two clear app surfaces:
+This branch is the installed **Windows-native Flutter app**. It owns its packaged
+collector, reads local activity, and talks to AiOS through loopback-only approved
+summaries. No Vite server or browser dashboard is required on Windows.
 
-- **Linux:** local React/Vite dashboard in the browser
-- **Windows:** installed native Flutter desktop app
-
-Both read the same local collector data, keep raw activity on-device, and can optionally talk to AiOS / Project AI Agent through loopback-only approved summaries.
+The Linux/browser implementation is preserved on the
+[`linux-browser`](https://github.com/AnuranjanJain/what-do-you-do/tree/linux-browser)
+branch.
 
 | App | Job |
 | --- | --- |
@@ -52,12 +53,11 @@ WDYD v2 keeps the boundary clean:
 
 ```mermaid
 flowchart LR
-  signals["Local device signals"] --> collector["Local collector/API"]
-  collector --> store["data/*.json"]
-  store --> linux["Linux browser client"]
-  store --> windows["Windows Flutter app"]
-  linux --> dashboard["Dashboard + widgets + hackathons"]
-  windows --> dashboard
+  windows["WDYD Flutter EXE"] --> collector["App-owned local collector"]
+  signals["Windows activity signals"] --> collector
+  collector --> store["Local JSON data"]
+  store --> windows
+  windows --> dashboard["Dashboard + widgets + hackathons"]
   dashboard --> privacy["Privacy controls"]
   dashboard -. approved summaries only .-> aios["AiOS / Project AI Agent"]
   aios --> planner["Planner summaries + command rows"]
@@ -66,15 +66,12 @@ flowchart LR
 
 No screenshots, keystrokes, private messages, raw browser history, or full notes are sent to the agent. The bridge shares only approved summaries.
 
-## Run It On Linux
+## Platform Branches
 
-```powershell
-npm install
-npm run collector:dev
-npm run dev
-```
-
-Open the local Vite URL in your browser. This is the Linux v1 app surface: no `.deb`, AppImage, Flatpak, or native Linux package required.
+| Branch | Product surface |
+| --- | --- |
+| `windows-native` | Installed Flutter desktop app with app-owned local services |
+| `linux-browser` | React/Vite browser dashboard and Linux collector workflow |
 
 ## Install It On Windows
 
@@ -85,6 +82,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\instal
 ```
 
 After install, Windows Search should find **What Do You Do** from the Start Menu shortcut.
+
+Launch the installed app directly. Do not run `npm run dev` or keep a browser
+window open. Google/email intelligence remains owned by the installed AiOS app.
 
 In **Settings**, Windows users can enable:
 
@@ -104,12 +104,11 @@ C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
 
 ```text
 .
-|-- src/                      Linux/browser React dashboard
 |-- flutter_app/              Windows native Flutter app
 |   |-- lib/src/               app shell, controller, APIs, models, theme
 |   |-- test/                  layout, summary, parsing, settings tests
 |   `-- windows/install/       local Windows install + uninstall scripts
-|-- scripts/                  local collector and API helpers
+|-- scripts/                  collector source packaged by the Windows installer
 |-- data/                     local-only session, sync, and hackathon data
 |-- docs/screenshots/         README screenshots and GIF previews
 `-- projects/                 architecture notes and build plans
