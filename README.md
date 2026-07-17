@@ -90,7 +90,7 @@ In **Settings**, Windows users can enable:
 
 - launch the app at sign-in
 - open the app in the background tray at sign-in
-- start the packaged local collector at sign-in
+- run native activity collection inside the app process
 - hide the window to the tray or fully exit the app
 
 For Windows development:
@@ -108,22 +108,17 @@ C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
 |   |-- lib/src/               app shell, controller, APIs, models, theme
 |   |-- test/                  layout, summary, parsing, settings tests
 |   `-- windows/install/       local Windows install + uninstall scripts
-|-- scripts/                  collector source packaged by the Windows installer
+|-- scripts/                  Linux/browser collector retained for its branch
 |-- data/                     local-only session, sync, and hackathon data
 |-- docs/screenshots/         README screenshots and GIF previews
 `-- projects/                 architecture notes and build plans
 ```
 
-## Local APIs
+## Native Data And AiOS API
 
-```text
-GET  /health
-GET  /sessions?date=YYYY-MM-DD
-GET  /hackathons
-POST /hackathons/save
-POST /hackathons/timeline
-POST /hackathons/delete
-```
+The Windows app collects activity in-process through Win32 APIs and persists
+daily JSON under `%LOCALAPPDATA%\What Do You Do\data`. It does not start Node,
+PowerShell polling, Vite, or a WDYD HTTP server.
 
 AiOS bridge endpoints are discovered through loopback pairing, usually at `http://127.0.0.1:5050`.
 

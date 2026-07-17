@@ -3476,18 +3476,6 @@ class SettingsPage extends StatelessWidget {
                   : null,
             ),
             const Divider(height: 1),
-            SwitchListTile(
-              secondary: const Icon(Icons.sensors_outlined),
-              title: const Text('Start local collector at sign-in'),
-              subtitle: Text(controller.startupMessage),
-              value: controller.launchCollectorAtLogin,
-              onChanged:
-                  controller.startupAvailable &&
-                      controller.collectorStartupAvailable
-                  ? controller.setLaunchCollectorAtLogin
-                  : null,
-            ),
-            const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.keyboard_arrow_down_outlined),
               title: const Text('Hide to tray now'),
@@ -3517,8 +3505,8 @@ class SettingsPage extends StatelessWidget {
                   : 'Not paired',
             ),
             const _SettingRow(
-              label: 'Collector API',
-              value: CollectorEndpoint.label,
+              label: 'Activity engine',
+              value: 'In-process Windows native',
             ),
             _SettingRow(label: 'Selected date', value: controller.selectedDate),
             _SettingRow(
@@ -3543,10 +3531,6 @@ class SettingsPage extends StatelessWidget {
       ),
     );
   }
-}
-
-abstract final class CollectorEndpoint {
-  static const label = '127.0.0.1:17321';
 }
 
 class _SettingRow extends StatelessWidget {

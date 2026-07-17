@@ -18,7 +18,7 @@ class AppController extends ChangeNotifier {
     File? preferencesFile,
     StartupManager? startupManager,
     WindowLifecycle? windowLifecycle,
-  }) : _api = api ?? CollectorApi(),
+  }) : _api = api ?? NativeCollectorApi(),
        _agentApi = agentApi ?? AgentDesktopApi(),
        _preferencesFileOverride = preferencesFile,
        _startupManager = startupManager ?? WindowsStartupManager(),
@@ -55,6 +55,7 @@ class AppController extends ChangeNotifier {
   Future<void> initialize() async {
     await _loadPreferences();
     await _loadStartupState();
+    await _api.start();
     await refresh();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 4),
@@ -300,6 +301,7 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _api.stop();
     super.dispose();
   }
 }
