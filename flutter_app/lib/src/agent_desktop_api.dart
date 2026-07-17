@@ -5,33 +5,41 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 
 class AgentDesktopApi {
-  AgentDesktopApi({http.Client? client}) : _client = client ?? http.Client();
+  AgentDesktopApi({http.Client? client, List<String>? candidateBaseUrls})
+    : _client = client ?? http.Client(),
+      _candidateBaseUrlOverride = candidateBaseUrls;
 
   final http.Client _client;
+  final List<String>? _candidateBaseUrlOverride;
 
   Future<AgentDesktopSnapshot> snapshot() async {
     final pairing = await _discoverPairing();
-    final responses = await Future.wait([
-      _get(pairing, '/api/live'),
-      _get(pairing, '/api/desktop/status'),
-      _get(pairing, '/api/workers'),
-      _get(pairing, '/api/hackathons'),
-      _get(pairing, '/api/placements'),
-      _get(pairing, '/api/neopat'),
-      _get(pairing, '/api/projects/context'),
-      _get(pairing, '/api/college/pat'),
+    final live = await _get(pairing, '/api/live');
+    final optional = await Future.wait([
+      _getOptional(pairing, '/api/desktop/status'),
+      _getOptional(pairing, '/api/workers'),
+      _getOptional(pairing, '/api/hackathons'),
+      _getOptional(pairing, '/api/placements'),
+      _getOptional(pairing, '/api/neopat'),
+      _getOptional(pairing, '/api/projects/context'),
+      _getOptional(pairing, '/api/college/pat'),
     ]);
+    final unavailableFeeds = optional
+        .where((result) => result.error != null)
+        .map((result) => result.path)
+        .toList();
 
     return AgentDesktopSnapshot.fromJson(
       baseUrl: pairing.baseUrl,
-      live: responses[0],
-      desktop: responses[1],
-      workers: responses[2],
-      hackathons: responses[3],
-      placements: responses[4],
-      neopat: responses[5],
-      projects: responses[6],
-      college: responses[7],
+      live: live,
+      desktop: optional[0].data,
+      workers: optional[1].data,
+      hackathons: optional[2].data,
+      placements: optional[3].data,
+      neopat: optional[4].data,
+      projects: optional[5].data,
+      college: optional[6].data,
+      unavailableFeeds: unavailableFeeds,
     );
   }
 
@@ -96,6 +104,14 @@ class AgentDesktopApi {
     return _request(pairing, 'GET', path);
   }
 
+  Future<_EndpointResult> _getOptional(_Pairing pairing, String path) async {
+    try {
+      return _EndpointResult(path: path, data: await _get(pairing, path));
+    } catch (error) {
+      return _EndpointResult(path: path, data: const {}, error: error);
+    }
+  }
+
   Future<Map<String, dynamic>> _request(
     _Pairing pairing,
     String method,
@@ -120,12 +136,30 @@ class AgentDesktopApi {
       throw Exception('AiOS Desktop responded with ${response.statusCode}.');
     }
 
-    final decoded = jsonDecode(response.body);
+    final responseBody = response.body.trimLeft();
+    if (responseBody.startsWith('<')) {
+      throw Exception(
+        'AiOS $path returned a web page instead of local API data.',
+      );
+    }
+
+    late final dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } on FormatException {
+      throw Exception('AiOS $path returned invalid local API data.');
+    }
     if (decoded is List<dynamic>) return {'items': decoded};
-    return decoded as Map<String, dynamic>;
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('AiOS $path returned an unexpected response.');
+    }
+    return decoded;
   }
 
   List<String> _candidateBaseUrls() {
+    if (_candidateBaseUrlOverride case final values?) {
+      return values;
+    }
     return [
       'http://127.0.0.1:5050',
       'http://127.0.0.1:5000',
@@ -140,10 +174,11 @@ class AgentDesktopApi {
     if (!isLoopback || (uri.scheme != 'http' && uri.scheme != 'https')) {
       throw Exception('AiOS Desktop must stay on loopback.');
     }
-    return uri
-        .replace(path: '', query: '', fragment: '')
-        .toString()
-        .replaceAll(RegExp(r'/+$'), '');
+    return Uri(
+      scheme: uri.scheme,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+    ).toString().replaceAll(RegExp(r'/+$'), '');
   }
 }
 
@@ -152,4 +187,12 @@ class _Pairing {
 
   final String baseUrl;
   final String token;
+}
+
+class _EndpointResult {
+  const _EndpointResult({required this.path, required this.data, this.error});
+
+  final String path;
+  final Map<String, dynamic> data;
+  final Object? error;
 }

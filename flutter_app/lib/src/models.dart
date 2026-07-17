@@ -192,6 +192,7 @@ class AgentDesktopSnapshot {
     required Map<String, dynamic> neopat,
     Map<String, dynamic> projects = const {},
     Map<String, dynamic> college = const {},
+    List<String> unavailableFeeds = const [],
   }) {
     final stats = live['stats'] as Map<String, dynamic>? ?? const {};
     final latestActivity =
@@ -207,7 +208,9 @@ class AgentDesktopSnapshot {
       baseUrl: baseUrl,
       connected: true,
       desktop: desktop['desktop'] == true,
-      message: 'Connected to AiOS Desktop at $baseUrl',
+      message: unavailableFeeds.isEmpty
+          ? 'Connected to AiOS Desktop at $baseUrl'
+          : 'Connected to AiOS. ${unavailableFeeds.length} optional feed${unavailableFeeds.length == 1 ? '' : 's'} will retry automatically.',
       wellbeingMinutes: (stats['wellbeing_minutes'] as num?)?.round() ?? 0,
       activeReminders: (stats['active_reminders'] as num?)?.round() ?? 0,
       opportunities: (stats['opportunities'] as num?)?.round() ?? 0,
