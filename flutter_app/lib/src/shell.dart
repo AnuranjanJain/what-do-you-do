@@ -25,6 +25,7 @@ class _AppShellState extends State<AppShell> {
     _Destination('Dashboard', Icons.dashboard_outlined),
     _Destination('Planner', Icons.auto_awesome_outlined),
     _Destination('Timeline', Icons.monitor_heart_outlined),
+    _Destination('Applications', Icons.work_outline),
     _Destination('Hackathons', Icons.emoji_events_outlined),
     _Destination('College Work', Icons.school_outlined),
     _Destination('Privacy', Icons.shield_outlined),
@@ -348,11 +349,12 @@ class _PageBody extends StatelessWidget {
       0 => DashboardPage(controller: controller),
       1 => IntelligencePage(controller: controller),
       2 => TimelinePage(controller: controller),
-      3 => HackathonsPage(controller: controller),
-      4 => CollegeWorkPage(controller: controller),
-      5 => PrivacyPage(controller: controller),
-      6 => AgentPage(controller: controller),
-      7 => WidgetsPage(controller: controller),
+      3 => ApplicationsPage(controller: controller),
+      4 => HackathonsPage(controller: controller),
+      5 => CollegeWorkPage(controller: controller),
+      6 => PrivacyPage(controller: controller),
+      7 => AgentPage(controller: controller),
+      8 => WidgetsPage(controller: controller),
       _ => SettingsPage(controller: controller),
     };
   }
@@ -1404,7 +1406,7 @@ class _BriefingPanel extends StatelessWidget {
       child: briefing.hasSignals
           ? LayoutBuilder(
               builder: (context, constraints) {
-                final horizontal = constraints.maxWidth > 760;
+                final horizontal = constraints.maxWidth > 900;
                 final children = [
                   _BriefingColumn(
                     label: 'Focus',
@@ -1415,6 +1417,11 @@ class _BriefingPanel extends StatelessWidget {
                     label: 'Due soon',
                     items: briefing.dueSoon,
                     empty: 'No deadlines this week.',
+                  ),
+                  _BriefingColumn(
+                    label: 'At risk',
+                    items: briefing.atRisk,
+                    empty: 'No urgent project or hiring risk.',
                   ),
                   _BriefingColumn(
                     label: 'Ask next',
@@ -1622,31 +1629,97 @@ class _PlanBlockTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final start = _shortDate(block.start);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        backgroundColor: _eventColor(block.eventType),
-        foregroundColor: AppColors.ink,
-        child: Text(
-          '${block.durationMinutes}',
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(10),
       ),
-      title: Text(
-        '$start - ${block.title}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w900),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            backgroundColor: _eventColor(block.eventType),
+            foregroundColor: AppColors.ink,
+            child: Text(
+              '${block.durationMinutes}',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$start - ${block.title}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                if (block.project.isNotEmpty)
+                  Text(
+                    block.project,
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
+                if (block.nextAction.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    block.nextAction,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+                if (block.reason.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    'Why now: ${block.reason}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.purple,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (block.progress > 0) ...[
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: block.progress / 100),
+                ],
+                if (block.sourceSignals.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    'Signals: ${block.sourceSignals.map((value) => value.replaceAll('_', ' ')).join(', ')}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Chip(label: Text(block.status)),
+              if (block.daysLeft != null)
+                Text(
+                  block.daysLeft == 0
+                      ? 'Due today'
+                      : '${block.daysLeft} days left',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
-      subtitle: Text(
-        [
-          if (block.project.isNotEmpty) block.project,
-          if (block.nextAction.isNotEmpty) block.nextAction,
-        ].join(' - '),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Chip(label: Text(block.status)),
     );
   }
 }
@@ -2784,6 +2857,794 @@ class _TimelineTile extends StatelessWidget {
   }
 }
 
+enum _ApplicationFilter { all, applied, assessment, interview, offer, archive }
+
+class ApplicationsPage extends StatefulWidget {
+  const ApplicationsPage({required this.controller, super.key});
+  final AppController controller;
+
+  @override
+  State<ApplicationsPage> createState() => _ApplicationsPageState();
+}
+
+class _ApplicationsPageState extends State<ApplicationsPage> {
+  _ApplicationFilter filter = _ApplicationFilter.all;
+  String query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final portfolio = widget.controller.agent.applications;
+    final visible = _filtered(portfolio);
+    return _StandardPage(
+      eyebrow: 'Career pipeline',
+      title: 'Applications',
+      subtitle: widget.controller.agent.connected
+          ? '${portfolio.stats.emailsScanned} local emails scanned across ${portfolio.stats.accounts} connected accounts. The latest 100 companies stay active; older applications move to Archive.'
+          : 'Start AiOS Assistant to load locally analyzed job and internship mail.',
+      action: IconButton(
+        tooltip: 'Sync application mail',
+        onPressed: widget.controller.syncIntelligence,
+        icon: const Icon(Icons.sync),
+      ),
+      child: Column(
+        children: [
+          _AgentConnectionBanner(agent: widget.controller.agent),
+          const SizedBox(height: 14),
+          _ApplicationMetrics(stats: portfolio.stats),
+          const SizedBox(height: 14),
+          _ApplicationControls(
+            selected: filter,
+            archiveCount: portfolio.stats.archived,
+            onFilter: (value) => setState(() => filter = value),
+            onSearch: (value) => setState(() => query = value.trim()),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final side = _ApplicationIntelligenceRail(portfolio: portfolio);
+              final list = _ApplicationList(
+                applications: visible,
+                archive: filter == _ApplicationFilter.archive,
+              );
+              if (constraints.maxWidth < 980) {
+                return Column(
+                  children: [side, const SizedBox(height: 14), list],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: list),
+                  const SizedBox(width: 14),
+                  SizedBox(width: 350, child: side),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<ApplicationRecord> _filtered(ApplicationPortfolio portfolio) {
+    final source = filter == _ApplicationFilter.archive
+        ? portfolio.archive
+        : portfolio.active;
+    return source.where((item) {
+      final matchesStage = switch (filter) {
+        _ApplicationFilter.all || _ApplicationFilter.archive => true,
+        _ApplicationFilter.applied => item.stage == 'applied',
+        _ApplicationFilter.assessment =>
+          item.stage == 'assessment' || item.stage == 'project',
+        _ApplicationFilter.interview =>
+          item.stage == 'interview' || item.stage == 'shortlisted',
+        _ApplicationFilter.offer => item.stage == 'offer',
+      };
+      final terms =
+          '${item.company} ${item.role} ${item.platform} ${item.sourceAccounts.join(' ')}'
+              .toLowerCase();
+      return matchesStage &&
+          (query.isEmpty || terms.contains(query.toLowerCase()));
+    }).toList();
+  }
+}
+
+class _ApplicationMetrics extends StatelessWidget {
+  const _ApplicationMetrics({required this.stats});
+  final ApplicationStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (
+        'Active applications',
+        '${stats.active}',
+        AppColors.yellow.withValues(alpha: 0.52),
+        Icons.work_outline,
+      ),
+      (
+        'Need action',
+        '${stats.needsAction}',
+        AppColors.peach,
+        Icons.priority_high_rounded,
+      ),
+      (
+        'Next rounds',
+        '${stats.nextSteps}',
+        AppColors.mint,
+        Icons.trending_up_rounded,
+      ),
+      ('Archived', '${stats.archived}', AppColors.ice, Icons.archive_outlined),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 900 ? 4 : 2;
+        return GridView.count(
+          crossAxisCount: columns,
+          childAspectRatio: columns == 4 ? 2.25 : 1.85,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (final item in items)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: item.$3,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            item.$2,
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            item.$1,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(item.$4, size: 22),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ApplicationControls extends StatelessWidget {
+  const _ApplicationControls({
+    required this.selected,
+    required this.archiveCount,
+    required this.onFilter,
+    required this.onSearch,
+  });
+  final _ApplicationFilter selected;
+  final int archiveCount;
+  final ValueChanged<_ApplicationFilter> onFilter;
+  final ValueChanged<String> onSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final filters = Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              _filterChip('All 100', _ApplicationFilter.all),
+              _filterChip('Applied', _ApplicationFilter.applied),
+              _filterChip('Assessment', _ApplicationFilter.assessment),
+              _filterChip('Interview', _ApplicationFilter.interview),
+              _filterChip('Offer', _ApplicationFilter.offer),
+              _filterChip('Archive $archiveCount', _ApplicationFilter.archive),
+            ],
+          );
+          final search = SizedBox(
+            width: constraints.maxWidth >= 780 ? 270 : double.infinity,
+            height: 44,
+            child: TextField(
+              onChanged: onSearch,
+              decoration: const InputDecoration(
+                hintText: 'Search company, role or email',
+                prefixIcon: Icon(Icons.search, size: 19),
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12),
+              ),
+            ),
+          );
+          if (constraints.maxWidth < 780) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [filters, const SizedBox(height: 10), search],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: filters),
+              const SizedBox(width: 12),
+              search,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, _ApplicationFilter value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected == value,
+      onSelected: (_) => onFilter(value),
+    );
+  }
+}
+
+class _ApplicationList extends StatelessWidget {
+  const _ApplicationList({required this.applications, required this.archive});
+  final List<ApplicationRecord> applications;
+  final bool archive;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      eyebrow: archive ? 'Application archive' : 'Recent applications',
+      title: archive
+          ? '${applications.length} older companies'
+          : '${applications.length} grouped companies',
+      child: AnimatedSwitcher(
+        duration: AppMotion.standard,
+        child: applications.isEmpty
+            ? _EmptyState(
+                key: ValueKey('empty-$archive'),
+                message: archive
+                    ? 'No archived applications yet.'
+                    : 'No matching application mail was found. Sync Gmail in AiOS and try again.',
+              )
+            : Column(
+                key: ValueKey('$archive-${applications.length}'),
+                children: [
+                  for (final item in applications)
+                    _ApplicationRow(
+                      application: item,
+                      onTap: () => _showApplicationDetails(context, item),
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _ApplicationRow extends StatelessWidget {
+  const _ApplicationRow({required this.application, required this.onTap});
+  final ApplicationRecord application;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final source = application.sourceEmail;
+    final stageColor = _applicationStageColor(application.stage);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 82),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final identity = Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      margin: const EdgeInsets.only(top: 5),
+                      decoration: BoxDecoration(
+                        color: stageColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${application.company} - ${application.role}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            [
+                              application.platform,
+                              if (application.appliedAt.isNotEmpty)
+                                'Applied ${_applicationDate(application.appliedAt)}',
+                            ].join('  |  '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (source != null && source.accountEmail.isNotEmpty)
+                            Text(
+                              'Mail: ${source.accountEmail}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.purple,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+                final stage = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      application.stageLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      application.timeline.isEmpty
+                          ? 'No timeline yet'
+                          : '${application.timeline.length} email updates grouped',
+                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                    ),
+                  ],
+                );
+                final deadline = _ApplicationDeadlinePill(
+                  application: application,
+                );
+                if (constraints.maxWidth < 620) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      identity,
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: stage),
+                          deadline,
+                        ],
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(flex: 5, child: identity),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 3, child: stage),
+                    const SizedBox(width: 10),
+                    deadline,
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ApplicationDeadlinePill extends StatelessWidget {
+  const _ApplicationDeadlinePill({required this.application});
+  final ApplicationRecord application;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = application.daysLeft;
+    final label = days == null
+        ? (application.stage == 'rejected' ? 'Closed' : 'Waiting')
+        : days < 0
+        ? 'Overdue'
+        : days == 0
+        ? 'Today'
+        : '$days days';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: _applicationStageColor(
+          application.stage,
+        ).withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _ApplicationIntelligenceRail extends StatelessWidget {
+  const _ApplicationIntelligenceRail({required this.portfolio});
+  final ApplicationPortfolio portfolio;
+
+  @override
+  Widget build(BuildContext context) {
+    final actionItems = portfolio.active
+        .where((item) => item.needsAction)
+        .toList();
+    final focus = portfolio.today.isNotEmpty
+        ? portfolio.today.first
+        : portfolio.dueSoon.isNotEmpty
+        ? portfolio.dueSoon.first
+        : actionItems.isEmpty
+        ? null
+        : actionItems.first;
+    final projects = portfolio.active
+        .map((item) => item.project)
+        .whereType<ApplicationProject>()
+        .toList();
+    final project = projects.isEmpty ? null : projects.first;
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.ink,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "TODAY'S PLAN",
+                style: TextStyle(
+                  color: AppColors.yellow,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                focus == null
+                    ? 'No hiring action due today'
+                    : '${focus.company} - ${focus.stageLabel}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                focus?.nextAction ??
+                    'AiOS will move urgent application steps here after the next mail sync.',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _RailPanel(
+          color: AppColors.yellow.withValues(alpha: 0.48),
+          eyebrow: 'Deadlines approaching',
+          children: portfolio.dueSoon.isEmpty
+              ? const [Text('No application deadlines in the next seven days.')]
+              : [
+                  for (final item in portfolio.dueSoon.take(4))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${item.company} - ${item.daysLeft} days',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          Text(
+                            item.nextAction,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+        ),
+        const SizedBox(height: 12),
+        _RailPanel(
+          color: AppColors.ice,
+          eyebrow: 'Project signals',
+          children: project == null
+              ? const [
+                  Text(
+                    'Link an internship or hackathon project in AiOS to track local files, GitHub and Codex history.',
+                  ),
+                ]
+              : [
+                  Text(
+                    '${project.title} - ${project.progress}% complete',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: project.progress / 100),
+                  const SizedBox(height: 8),
+                  Text(
+                    project.nextAction.isEmpty
+                        ? 'Choose the next concrete project task.'
+                        : project.nextAction,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  if (project.signals.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sources: ${project.signals.map((value) => value.replaceAll('_', ' ')).join(', ')}',
+                      style: const TextStyle(
+                        color: AppColors.purple,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RailPanel extends StatelessWidget {
+  const _RailPanel({
+    required this.color,
+    required this.eyebrow,
+    required this.children,
+  });
+  final Color color;
+  final String eyebrow;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            eyebrow.toUpperCase(),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _showApplicationDetails(
+  BuildContext context,
+  ApplicationRecord item,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (context) => Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 720),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.company,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          item.role,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Chip(label: Text(item.stageLabel)),
+                  Chip(label: Text(item.platform)),
+                  if (item.appliedAt.isNotEmpty)
+                    Chip(
+                      label: Text(
+                        'Applied ${_applicationDate(item.appliedAt)}',
+                      ),
+                    ),
+                  if (item.deadline.isNotEmpty)
+                    Chip(label: Text('Due ${_shortDate(item.deadline)}')),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                item.summary.isEmpty
+                    ? 'No local AI summary is available yet.'
+                    : item.summary,
+                style: const TextStyle(height: 1.45),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Next action',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 5),
+              Text(item.nextAction),
+              if (item.sourceEmails.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Text(
+                  'Source email',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                for (final email in item.sourceEmails.take(4))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.mail_outline),
+                    title: Text(
+                      email.subject,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      '${email.accountEmail} | ${email.sender}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Text(
+                      _applicationDate(email.receivedAt),
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  ),
+              ],
+              if (item.project case final project?) ...[
+                const SizedBox(height: 18),
+                Text(
+                  'Linked project - ${project.progress}%',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(value: project.progress / 100),
+                const SizedBox(height: 8),
+                Text(project.nextAction),
+              ],
+              if (item.timeline.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Text(
+                  'Application timeline',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final event in item.timeline)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      radius: 15,
+                      backgroundColor: _applicationStageColor(event.stage),
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        size: 14,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    title: Text(
+                      event.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      '${event.stage.replaceAll('_', ' ')} | ${_applicationDate(event.at)}',
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class HackathonsPage extends StatelessWidget {
   const HackathonsPage({required this.controller, super.key});
   final AppController controller;
@@ -3619,7 +4480,7 @@ class _StandardPage extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.message});
+  const _EmptyState({required this.message, super.key});
   final String message;
 
   @override
@@ -3688,6 +4549,7 @@ bool _sameDay(DateTime left, DateTime right) {
 IconData _eventIcon(String type) {
   return switch (type) {
     'hackathon' => Icons.emoji_events_outlined,
+    'application' => Icons.work_outline,
     'email' => Icons.mark_email_unread_outlined,
     'repo' => Icons.code_outlined,
     'learning_video' => Icons.play_circle_outline,
@@ -3699,6 +4561,7 @@ IconData _eventIcon(String type) {
 Color _eventColor(String type) {
   return switch (type) {
     'hackathon' => AppColors.yellow,
+    'application' => AppColors.peach,
     'email' => AppColors.ice,
     'repo' => AppColors.mint,
     'learning_video' => const Color(0xFFC9B1E3),
@@ -3715,4 +4578,20 @@ String _shortDate(String value) {
 
 String _formatDraftDate(DateTime value) {
   return DateFormat('MMM d, h:mm a').format(value);
+}
+
+Color _applicationStageColor(String stage) {
+  return switch (stage) {
+    'offer' || 'interview' || 'shortlisted' => AppColors.mint,
+    'assessment' => AppColors.yellow,
+    'project' => AppColors.peach,
+    'rejected' => Colors.grey.withValues(alpha: 0.42),
+    _ => AppColors.ice,
+  };
+}
+
+String _applicationDate(String value) {
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) return value;
+  return DateFormat('dd MMM yyyy').format(parsed.toLocal());
 }

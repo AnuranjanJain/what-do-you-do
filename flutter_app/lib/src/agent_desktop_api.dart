@@ -20,6 +20,7 @@ class AgentDesktopApi {
       _getOptional(pairing, '/api/workers'),
       _getOptional(pairing, '/api/hackathons'),
       _getOptional(pairing, '/api/placements'),
+      _getOptional(pairing, '/api/applications'),
       _getOptional(pairing, '/api/neopat'),
       _getOptional(pairing, '/api/projects/context'),
       _getOptional(pairing, '/api/college/pat'),
@@ -36,9 +37,10 @@ class AgentDesktopApi {
       workers: optional[1].data,
       hackathons: optional[2].data,
       placements: optional[3].data,
-      neopat: optional[4].data,
-      projects: optional[5].data,
-      college: optional[6].data,
+      applications: optional[4].data,
+      neopat: optional[5].data,
+      projects: optional[6].data,
+      college: optional[7].data,
       unavailableFeeds: unavailableFeeds,
     );
   }

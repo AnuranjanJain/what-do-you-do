@@ -30,6 +30,7 @@ class AppController extends ChangeNotifier {
   final StartupManager _startupManager;
   final WindowLifecycle _windowLifecycle;
   Timer? _refreshTimer;
+  bool _refreshInProgress = false;
 
   bool darkMode = false;
   bool launchAppAtLogin = false;
@@ -58,12 +59,14 @@ class AppController extends ChangeNotifier {
     await _api.start();
     await refresh();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 4),
+      const Duration(seconds: 15),
       (_) => refresh(silent: true),
     );
   }
 
   Future<void> refresh({bool silent = false}) async {
+    if (_refreshInProgress) return;
+    _refreshInProgress = true;
     if (!silent) {
       loading = true;
       notifyListeners();
@@ -113,6 +116,7 @@ class AppController extends ChangeNotifier {
       message =
           'Collector is offline. Start the local collector to show real data.';
     } finally {
+      _refreshInProgress = false;
       loading = false;
       notifyListeners();
     }

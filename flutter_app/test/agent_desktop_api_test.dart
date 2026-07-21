@@ -74,6 +74,77 @@ void main() {
       ),
     );
   });
+
+  test(
+    'application intelligence parses grouped company and source email',
+    () async {
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/local/pairing') {
+          return jsonResponse({
+            'ok': true,
+            'service': 'aios-assistant',
+            'base_url': baseUrl,
+            'api_token': 'test-token',
+          });
+        }
+        if (request.url.path == '/api/live') {
+          return jsonResponse({
+            'stats': <String, dynamic>{},
+            'intelligence': <String, dynamic>{},
+            'readiness': <String, dynamic>{},
+          });
+        }
+        if (request.url.path == '/api/applications') {
+          return jsonResponse({
+            'stats': {
+              'active': 1,
+              'archived': 0,
+              'emails_scanned': 100,
+              'accounts': 2,
+            },
+            'active': [
+              {
+                'id': 'example',
+                'company': 'Example',
+                'role': 'Software Intern',
+                'roles': ['Software Intern'],
+                'stage': 'assessment',
+                'stage_label': 'Assessment / test',
+                'selected_for_next_step': true,
+                'needs_action': true,
+                'platform': 'LinkedIn',
+                'platforms': ['LinkedIn'],
+                'source_accounts': ['jobs@example.com'],
+                'source_email': {
+                  'id': 7,
+                  'account_email': 'jobs@example.com',
+                  'sender': 'recruiter@example.com',
+                  'subject': 'Assessment invitation',
+                  'received_at': '2026-07-18T09:00:00',
+                  'platform': 'LinkedIn',
+                },
+              },
+            ],
+          });
+        }
+        return jsonResponse(<String, dynamic>{});
+      });
+      final api = AgentDesktopApi(
+        client: client,
+        candidateBaseUrls: const [baseUrl],
+      );
+
+      final snapshot = await api.snapshot();
+
+      expect(snapshot.applications.active, hasLength(1));
+      expect(snapshot.applications.active.first.company, 'Example');
+      expect(
+        snapshot.applications.active.first.sourceEmail?.accountEmail,
+        'jobs@example.com',
+      );
+      expect(snapshot.placements, 1);
+    },
+  );
 }
 
 http.Response jsonResponse(Object body) {

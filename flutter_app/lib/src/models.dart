@@ -123,6 +123,274 @@ class Hackathon {
   final String workDone;
 }
 
+class ApplicationPortfolio {
+  const ApplicationPortfolio({
+    required this.active,
+    required this.archive,
+    required this.today,
+    required this.dueSoon,
+    required this.stats,
+    required this.updatedAt,
+  });
+
+  const ApplicationPortfolio.empty()
+    : active = const [],
+      archive = const [],
+      today = const [],
+      dueSoon = const [],
+      stats = const ApplicationStats.empty(),
+      updatedAt = '';
+
+  factory ApplicationPortfolio.fromJson(Map<String, dynamic> json) {
+    List<ApplicationRecord> records(String key) =>
+        (json[key] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(ApplicationRecord.fromJson)
+            .toList();
+    return ApplicationPortfolio(
+      active: records('active'),
+      archive: records('archive'),
+      today: records('today'),
+      dueSoon: records('due_soon'),
+      stats: ApplicationStats.fromJson(
+        json['stats'] as Map<String, dynamic>? ?? const {},
+      ),
+      updatedAt: json['updated_at']?.toString() ?? '',
+    );
+  }
+
+  final List<ApplicationRecord> active;
+  final List<ApplicationRecord> archive;
+  final List<ApplicationRecord> today;
+  final List<ApplicationRecord> dueSoon;
+  final ApplicationStats stats;
+  final String updatedAt;
+}
+
+class ApplicationStats {
+  const ApplicationStats({
+    required this.active,
+    required this.archived,
+    required this.needsAction,
+    required this.nextSteps,
+    required this.offers,
+    required this.emailsScanned,
+    required this.accounts,
+  });
+
+  const ApplicationStats.empty()
+    : active = 0,
+      archived = 0,
+      needsAction = 0,
+      nextSteps = 0,
+      offers = 0,
+      emailsScanned = 0,
+      accounts = 0;
+
+  factory ApplicationStats.fromJson(Map<String, dynamic> json) {
+    int value(String key) => (json[key] as num?)?.round() ?? 0;
+    return ApplicationStats(
+      active: value('active'),
+      archived: value('archived'),
+      needsAction: value('needs_action'),
+      nextSteps: value('next_steps'),
+      offers: value('offers'),
+      emailsScanned: value('emails_scanned'),
+      accounts: value('accounts'),
+    );
+  }
+
+  final int active;
+  final int archived;
+  final int needsAction;
+  final int nextSteps;
+  final int offers;
+  final int emailsScanned;
+  final int accounts;
+}
+
+class ApplicationRecord {
+  const ApplicationRecord({
+    required this.id,
+    required this.company,
+    required this.role,
+    required this.roles,
+    required this.stage,
+    required this.stageLabel,
+    required this.selectedForNextStep,
+    required this.needsAction,
+    required this.appliedAt,
+    required this.appliedDateInferred,
+    required this.latestActivityAt,
+    required this.deadline,
+    required this.daysLeft,
+    required this.platform,
+    required this.platforms,
+    required this.sourceAccounts,
+    required this.sourceEmail,
+    required this.sourceEmails,
+    required this.summary,
+    required this.nextAction,
+    required this.timeline,
+    required this.project,
+    required this.archived,
+  });
+
+  factory ApplicationRecord.fromJson(Map<String, dynamic> json) {
+    final sourceEmail = json['source_email'];
+    final project = json['project'];
+    return ApplicationRecord(
+      id: json['id']?.toString() ?? '',
+      company: json['company']?.toString() ?? 'Unknown company',
+      role: json['role']?.toString() ?? 'Application',
+      roles: _stringList(json['roles']),
+      stage: json['stage']?.toString() ?? 'tracked',
+      stageLabel: json['stage_label']?.toString() ?? 'Tracking',
+      selectedForNextStep: json['selected_for_next_step'] == true,
+      needsAction: json['needs_action'] == true,
+      appliedAt: json['applied_at']?.toString() ?? '',
+      appliedDateInferred: json['applied_date_inferred'] == true,
+      latestActivityAt: json['latest_activity_at']?.toString() ?? '',
+      deadline: json['deadline']?.toString() ?? '',
+      daysLeft: (json['days_left'] as num?)?.round(),
+      platform: json['platform']?.toString() ?? 'Email',
+      platforms: _stringList(json['platforms']),
+      sourceAccounts: _stringList(json['source_accounts']),
+      sourceEmail: sourceEmail is Map<String, dynamic>
+          ? ApplicationSourceEmail.fromJson(sourceEmail)
+          : null,
+      sourceEmails: (json['source_emails'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(ApplicationSourceEmail.fromJson)
+          .toList(),
+      summary: json['summary']?.toString() ?? '',
+      nextAction: json['next_action']?.toString() ?? '',
+      timeline: (json['timeline'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(ApplicationTimelineEntry.fromJson)
+          .toList(),
+      project: project is Map<String, dynamic>
+          ? ApplicationProject.fromJson(project)
+          : null,
+      archived: json['archived'] == true,
+    );
+  }
+
+  final String id;
+  final String company;
+  final String role;
+  final List<String> roles;
+  final String stage;
+  final String stageLabel;
+  final bool selectedForNextStep;
+  final bool needsAction;
+  final String appliedAt;
+  final bool appliedDateInferred;
+  final String latestActivityAt;
+  final String deadline;
+  final int? daysLeft;
+  final String platform;
+  final List<String> platforms;
+  final List<String> sourceAccounts;
+  final ApplicationSourceEmail? sourceEmail;
+  final List<ApplicationSourceEmail> sourceEmails;
+  final String summary;
+  final String nextAction;
+  final List<ApplicationTimelineEntry> timeline;
+  final ApplicationProject? project;
+  final bool archived;
+}
+
+class ApplicationSourceEmail {
+  const ApplicationSourceEmail({
+    required this.id,
+    required this.accountEmail,
+    required this.sender,
+    required this.subject,
+    required this.receivedAt,
+    required this.platform,
+  });
+
+  factory ApplicationSourceEmail.fromJson(Map<String, dynamic> json) {
+    return ApplicationSourceEmail(
+      id: (json['id'] as num?)?.round() ?? 0,
+      accountEmail: json['account_email']?.toString() ?? '',
+      sender: json['sender']?.toString() ?? '',
+      subject: json['subject']?.toString() ?? '',
+      receivedAt: json['received_at']?.toString() ?? '',
+      platform: json['platform']?.toString() ?? 'Email',
+    );
+  }
+
+  final int id;
+  final String accountEmail;
+  final String sender;
+  final String subject;
+  final String receivedAt;
+  final String platform;
+}
+
+class ApplicationTimelineEntry {
+  const ApplicationTimelineEntry({
+    required this.at,
+    required this.stage,
+    required this.title,
+    required this.summary,
+    required this.sourceEmailId,
+    required this.accountEmail,
+  });
+
+  factory ApplicationTimelineEntry.fromJson(Map<String, dynamic> json) {
+    return ApplicationTimelineEntry(
+      at: json['at']?.toString() ?? '',
+      stage: json['stage']?.toString() ?? 'tracked',
+      title: json['title']?.toString() ?? 'Application update',
+      summary: json['summary']?.toString() ?? '',
+      sourceEmailId: (json['source_email_id'] as num?)?.round(),
+      accountEmail: json['account_email']?.toString() ?? '',
+    );
+  }
+
+  final String at;
+  final String stage;
+  final String title;
+  final String summary;
+  final int? sourceEmailId;
+  final String accountEmail;
+}
+
+class ApplicationProject {
+  const ApplicationProject({
+    required this.id,
+    required this.title,
+    required this.progress,
+    required this.repository,
+    required this.workingDirectory,
+    required this.nextAction,
+    required this.signals,
+  });
+
+  factory ApplicationProject.fromJson(Map<String, dynamic> json) {
+    return ApplicationProject(
+      id: (json['id'] as num?)?.round() ?? 0,
+      title: json['title']?.toString() ?? 'Linked project',
+      progress: (json['progress'] as num?)?.round() ?? 0,
+      repository: json['repository']?.toString() ?? '',
+      workingDirectory: json['working_directory']?.toString() ?? '',
+      nextAction: json['next_action']?.toString() ?? '',
+      signals: _stringList(json['signals']),
+    );
+  }
+
+  final int id;
+  final String title;
+  final int progress;
+  final String repository;
+  final String workingDirectory;
+  final String nextAction;
+  final List<String> signals;
+}
+
 class AgentDesktopSnapshot {
   const AgentDesktopSnapshot({
     required this.baseUrl,
@@ -150,6 +418,7 @@ class AgentDesktopSnapshot {
     required this.updatedAt,
     this.projects = const ProjectContextSnapshot.empty(),
     this.college = const CollegeWorkSnapshot.empty(),
+    this.applications = const ApplicationPortfolio.empty(),
   });
 
   factory AgentDesktopSnapshot.disconnected(String message) {
@@ -179,6 +448,7 @@ class AgentDesktopSnapshot {
       updatedAt: '',
       projects: const ProjectContextSnapshot.empty(),
       college: const CollegeWorkSnapshot.empty(),
+      applications: const ApplicationPortfolio.empty(),
     );
   }
 
@@ -192,6 +462,7 @@ class AgentDesktopSnapshot {
     required Map<String, dynamic> neopat,
     Map<String, dynamic> projects = const {},
     Map<String, dynamic> college = const {},
+    Map<String, dynamic> applications = const {},
     List<String> unavailableFeeds = const [],
   }) {
     final stats = live['stats'] as Map<String, dynamic>? ?? const {};
@@ -215,7 +486,10 @@ class AgentDesktopSnapshot {
       activeReminders: (stats['active_reminders'] as num?)?.round() ?? 0,
       opportunities: (stats['opportunities'] as num?)?.round() ?? 0,
       hackathons: _countList(hackathons['hackathons']),
-      placements: _countList(placements['placements']),
+      placements:
+          ((applications['stats'] as Map<String, dynamic>?)?['active'] as num?)
+              ?.round() ??
+          _countList(placements['placements']),
       neopat: _countList(neopat['placements']),
       unreadHackathonUpdates:
           (hackathons['unread_updates'] as num?)?.round() ?? 0,
@@ -234,6 +508,7 @@ class AgentDesktopSnapshot {
       updatedAt: live['updated_at']?.toString() ?? '',
       projects: ProjectContextSnapshot.fromJson(projects),
       college: CollegeWorkSnapshot.fromJson(college),
+      applications: ApplicationPortfolio.fromJson(applications),
     );
   }
 
@@ -262,6 +537,7 @@ class AgentDesktopSnapshot {
   final String updatedAt;
   final ProjectContextSnapshot projects;
   final CollegeWorkSnapshot college;
+  final ApplicationPortfolio applications;
 
   int get runningWorkers => workers.where((worker) => worker.running).length;
 }
@@ -304,6 +580,7 @@ class ProjectContextItem {
     required this.title,
     required this.status,
     required this.progress,
+    this.deadline = '',
     required this.repository,
     required this.workingDirectory,
     required this.selected,
@@ -319,6 +596,7 @@ class ProjectContextItem {
       title: json['title']?.toString() ?? 'Untitled project',
       status: json['status']?.toString() ?? 'open',
       progress: (json['progress'] as num?)?.round() ?? 0,
+      deadline: json['deadline']?.toString() ?? '',
       repository: json['repository']?.toString() ?? '',
       workingDirectory: json['working_directory']?.toString() ?? '',
       selected: json['selected'] == true,
@@ -336,6 +614,7 @@ class ProjectContextItem {
   final String title;
   final String status;
   final int progress;
+  final String deadline;
   final String repository;
   final String workingDirectory;
   final bool selected;
@@ -657,6 +936,8 @@ class PlannerBriefing {
     required this.focus,
     required this.dueSoon,
     required this.askNext,
+    this.focusReasons = const [],
+    this.atRisk = const [],
   });
 
   factory PlannerBriefing.empty() {
@@ -684,6 +965,8 @@ class PlannerBriefing {
       focus: _stringList(json['focus']),
       dueSoon: _stringList(json['due_soon']),
       askNext: _stringList(json['ask_next']),
+      focusReasons: _stringList(json['focus_reasons']),
+      atRisk: _stringList(json['at_risk']),
     );
   }
 
@@ -696,6 +979,8 @@ class PlannerBriefing {
   final List<String> focus;
   final List<String> dueSoon;
   final List<String> askNext;
+  final List<String> focusReasons;
+  final List<String> atRisk;
 
   bool get hasSignals =>
       headline.isNotEmpty ||
@@ -738,6 +1023,10 @@ class PlanningBlock {
     required this.deadline,
     required this.nextAction,
     required this.status,
+    this.reason = '',
+    this.daysLeft,
+    this.progress = 0,
+    this.sourceSignals = const [],
   });
 
   factory PlanningBlock.fromJson(Map<String, dynamic> json) {
@@ -751,6 +1040,10 @@ class PlanningBlock {
       deadline: json['deadline']?.toString() ?? '',
       nextAction: json['next_action']?.toString() ?? '',
       status: json['status']?.toString() ?? 'planned',
+      reason: json['reason']?.toString() ?? '',
+      daysLeft: (json['days_left'] as num?)?.round(),
+      progress: (json['progress'] as num?)?.round() ?? 0,
+      sourceSignals: _stringList(json['source_signals']),
     );
   }
 
@@ -763,6 +1056,10 @@ class PlanningBlock {
   final String deadline;
   final String nextAction;
   final String status;
+  final String reason;
+  final int? daysLeft;
+  final int progress;
+  final List<String> sourceSignals;
 }
 
 class PlanningEventSummary {
