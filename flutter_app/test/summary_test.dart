@@ -602,7 +602,10 @@ class _FakeAgentDesktopApi extends AgentDesktopApi {
   bool syncedIntelligence = false;
 
   @override
-  Future<AgentDesktopSnapshot> snapshot() async =>
+  Future<AgentDesktopSnapshot?> cachedSnapshot() async => null;
+
+  @override
+  Future<AgentDesktopSnapshot> snapshot({bool forceDiscovery = false}) async =>
       AgentDesktopSnapshot.disconnected('Test agent disconnected.');
 
   @override

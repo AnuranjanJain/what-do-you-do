@@ -1,12 +1,132 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:what_do_you_do/src/agent_desktop_api.dart';
+import 'package:what_do_you_do/src/models.dart';
 
 void main() {
   const baseUrl = 'http://127.0.0.1:5999';
+
+  test(
+    'runtime descriptor and consolidated snapshot use one fast request',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp('wdyd-aios-fast-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final runtimeFile = File('${tempDir.path}\\runtime.json');
+      final cacheFile = File('${tempDir.path}\\snapshot.json');
+      await runtimeFile.writeAsString(
+        jsonEncode({
+          'service': 'aios-assistant',
+          'base_url': baseUrl,
+          'api_token': 'runtime-token',
+          'snapshot_path': '/api/wdyd/snapshot',
+        }),
+      );
+      final requestedPaths = <String>[];
+      final client = MockClient((request) async {
+        requestedPaths.add(request.url.path);
+        expect(request.headers['X-AiOS-Token'], 'runtime-token');
+        return jsonResponse(unifiedSnapshot(wellbeingMinutes: 75));
+      });
+      final api = AgentDesktopApi(
+        client: client,
+        runtimeDescriptorFile: runtimeFile,
+        snapshotCacheFile: cacheFile,
+        candidateBaseUrls: const [baseUrl],
+      );
+
+      final snapshot = await api.snapshot();
+
+      expect(requestedPaths, ['/api/wdyd/snapshot']);
+      expect(snapshot.connected, isTrue);
+      expect(snapshot.stale, isFalse);
+      expect(snapshot.wellbeingMinutes, 75);
+      expect(await cacheFile.exists(), isTrue);
+    },
+  );
+
+  test(
+    'last private snapshot remains visible during an AiOS restart',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp('wdyd-aios-cache-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final cacheFile = File('${tempDir.path}\\snapshot.json');
+      final onlineApi = AgentDesktopApi(
+        client: MockClient((request) async {
+          if (request.url.path == '/api/local/pairing') {
+            return jsonResponse({
+              'ok': true,
+              'service': 'aios-assistant',
+              'base_url': baseUrl,
+              'api_token': 'test-token',
+              'snapshot_path': '/api/wdyd/snapshot',
+            });
+          }
+          return jsonResponse(unifiedSnapshot(wellbeingMinutes: 92));
+        }),
+        candidateBaseUrls: const [baseUrl],
+        snapshotCacheFile: cacheFile,
+      );
+      final live = await onlineApi.snapshot();
+      onlineApi.close();
+      expect(live.stale, isFalse);
+
+      final offlineApi = AgentDesktopApi(
+        client: MockClient((_) async => throw const SocketException('offline')),
+        candidateBaseUrls: const [baseUrl],
+        snapshotCacheFile: cacheFile,
+        discoveryTimeout: const Duration(milliseconds: 20),
+      );
+
+      final cached = await offlineApi.snapshot();
+
+      expect(cached.connected, isTrue);
+      expect(cached.stale, isTrue);
+      expect(cached.wellbeingMinutes, 92);
+      expect(cached.message, contains('last private snapshot'));
+    },
+  );
+
+  test('failed planner writes are never replayed automatically', () async {
+    var writeCount = 0;
+    final api = AgentDesktopApi(
+      client: MockClient((request) async {
+        if (request.url.path == '/api/local/pairing') {
+          return jsonResponse({
+            'ok': true,
+            'service': 'aios-assistant',
+            'base_url': baseUrl,
+            'api_token': 'test-token',
+          });
+        }
+        writeCount += 1;
+        return http.Response('temporary failure', 500);
+      }),
+      candidateBaseUrls: const [baseUrl],
+    );
+
+    await expectLater(
+      api.createPlanningEvent(
+        const PlanningEventDraft(
+          eventType: 'task',
+          title: 'Prepare interview notes',
+          project: 'Career',
+          idea: '',
+          deadline: '',
+          plannedStart: '',
+          plannedMinutes: 30,
+          workDone: '',
+          workLeft: 'Prepare examples',
+          repoUrl: '',
+        ),
+      ),
+      throwsA(isA<Exception>()),
+    );
+    expect(writeCount, 1);
+  });
 
   test('one optional HTML response does not disconnect AiOS', () async {
     final requestedPaths = <String>[];
@@ -153,4 +273,27 @@ http.Response jsonResponse(Object body) {
     200,
     headers: const {'content-type': 'application/json'},
   );
+}
+
+Map<String, dynamic> unifiedSnapshot({required int wellbeingMinutes}) {
+  return {
+    'ok': true,
+    'service': 'aios-assistant',
+    'schema_version': 1,
+    'generated_at': '2026-07-21T12:00:00Z',
+    'live': {
+      'stats': {'wellbeing_minutes': wellbeingMinutes},
+      'intelligence': <String, dynamic>{},
+      'readiness': <String, dynamic>{},
+      'updated_at': '2026-07-21T12:00:00Z',
+    },
+    'desktop': {'desktop': true},
+    'workers': {'items': <dynamic>[]},
+    'hackathons': <String, dynamic>{},
+    'placements': <String, dynamic>{},
+    'applications': <String, dynamic>{},
+    'neopat': <String, dynamic>{},
+    'projects': <String, dynamic>{},
+    'college': <String, dynamic>{},
+  };
 }

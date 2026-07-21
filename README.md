@@ -120,18 +120,23 @@ The Windows app collects activity in-process through Win32 APIs and persists
 daily JSON under `%LOCALAPPDATA%\What Do You Do\data`. It does not start Node,
 PowerShell polling, Vite, or a WDYD HTTP server.
 
-AiOS bridge endpoints are discovered through loopback pairing, usually at `http://127.0.0.1:5050`.
+The Windows client reads `%LOCALAPPDATA%\AiOS Assistant\runtime.json` first, then
+falls back to parallel loopback discovery. A healthy connection uses one
+versioned snapshot request instead of polling every feature separately.
 
 ```text
 GET /api/local/pairing
-GET /api/live
-GET /api/workers
-GET /api/hackathons
-GET /api/placements
-GET /api/neopat
+GET /api/wdyd/snapshot
 GET /api/intelligence/today
 GET /api/intelligence/search?q=internship
 ```
+
+WDYD keeps a privacy-filtered last-good snapshot under its own local app-data
+folder. During an AiOS restart, real planner, application, PAT, reminder and
+project summaries stay visible with a clear reconnecting state. Live polling
+retries every 3 seconds while reconnecting and settles to 15 seconds when
+healthy. Raw email bodies, OAuth tokens and private credentials are never cached
+by WDYD.
 
 ## Privacy Promise
 

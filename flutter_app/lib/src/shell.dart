@@ -1010,7 +1010,10 @@ class IntelligencePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _AgentConnectionBanner(agent: controller.agent),
+          _AgentConnectionBanner(
+            agent: controller.agent,
+            onOpen: controller.openAiOS,
+          ),
           const SizedBox(height: 12),
           _ProjectContextPanel(context: controller.agent.projects),
           const SizedBox(height: 12),
@@ -1144,7 +1147,10 @@ class CollegeWorkPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _AgentConnectionBanner(agent: controller.agent),
+          _AgentConnectionBanner(
+            agent: controller.agent,
+            onOpen: controller.openAiOS,
+          ),
           const SizedBox(height: 12),
           _Panel(
             eyebrow: college.hasClassToday
@@ -2888,7 +2894,10 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
       ),
       child: Column(
         children: [
-          _AgentConnectionBanner(agent: widget.controller.agent),
+          _AgentConnectionBanner(
+            agent: widget.controller.agent,
+            onOpen: widget.controller.openAiOS,
+          ),
           const SizedBox(height: 14),
           _ApplicationMetrics(stats: portfolio.stats),
           const SizedBox(height: 14),
@@ -3871,15 +3880,25 @@ class AgentPage extends StatelessWidget {
       eyebrow: 'Companion integration',
       title: 'Project AI Agent desktop',
       subtitle: agent.message,
-      action: IconButton(
-        tooltip: 'Refresh agent services',
-        onPressed: controller.refresh,
-        icon: const Icon(Icons.refresh),
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Open AiOS Desktop',
+            onPressed: controller.openAiOS,
+            icon: const Icon(Icons.open_in_new_rounded),
+          ),
+          IconButton(
+            tooltip: 'Refresh agent services',
+            onPressed: controller.refresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _AgentConnectionBanner(agent: agent),
+          _AgentConnectionBanner(agent: agent, onOpen: controller.openAiOS),
           const SizedBox(height: 12),
           _ReadinessPanel(readiness: agent.readiness),
           const SizedBox(height: 12),
@@ -4010,27 +4029,41 @@ class AgentPage extends StatelessWidget {
 }
 
 class _AgentConnectionBanner extends StatelessWidget {
-  const _AgentConnectionBanner({required this.agent});
+  const _AgentConnectionBanner({required this.agent, required this.onOpen});
   final AgentDesktopSnapshot agent;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final connected = agent.connected;
+    final stale = agent.stale;
+    final tone = stale
+        ? AppColors.peach
+        : connected
+        ? AppColors.yellow
+        : Colors.grey;
+    final lastUpdated = agent.updatedAt.isEmpty
+        ? ''
+        : _shortDate(agent.updatedAt);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: connected
-            ? AppColors.yellow.withValues(alpha: 0.22)
-            : Colors.grey.withValues(alpha: 0.12),
+        color: tone.withValues(alpha: connected ? 0.22 : 0.12),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: connected ? AppColors.yellow : Colors.grey,
+            backgroundColor: tone,
             foregroundColor: AppColors.ink,
-            child: Icon(connected ? Icons.link : Icons.link_off),
+            child: Icon(
+              stale
+                  ? Icons.sync_problem_rounded
+                  : connected
+                  ? Icons.link
+                  : Icons.link_off,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -4038,25 +4071,38 @@ class _AgentConnectionBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  connected
+                  stale
+                      ? 'Reconnecting to AiOS Desktop'
+                      : connected
                       ? 'Paired with AiOS Desktop'
                       : 'AiOS Desktop unavailable',
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  connected
-                      ? '${agent.baseUrl} · ${agent.desktop ? 'native desktop' : 'browser mode'}'
+                  stale
+                      ? agent.message
+                      : connected
+                      ? '${agent.baseUrl} | ${agent.desktop ? 'native desktop' : 'browser mode'}${lastUpdated.isEmpty ? '' : ' | Updated $lastUpdated'}'
                       : agent.message,
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
-          if (connected)
+          if (!connected || stale)
+            IconButton(
+              tooltip: 'Open AiOS Desktop',
+              onPressed: onOpen,
+              icon: const Icon(Icons.open_in_new_rounded),
+            )
+          else
             Chip(
-              avatar: const Icon(Icons.lock_outline, size: 14),
-              label: const Text('Loopback'),
+              avatar: Icon(
+                stale ? Icons.history_rounded : Icons.lock_outline,
+                size: 14,
+              ),
+              label: Text(stale ? 'Saved locally' : 'Live loopback'),
               backgroundColor: Colors.white.withValues(alpha: 0.52),
             ),
         ],
@@ -4357,7 +4403,11 @@ class SettingsPage extends StatelessWidget {
             ),
             _SettingRow(
               label: 'AiOS Desktop',
-              value: controller.agent.connected ? 'Connected' : 'Unavailable',
+              value: controller.agent.stale
+                  ? 'Reconnecting - saved data visible'
+                  : controller.agent.connected
+                  ? 'Connected live'
+                  : 'Unavailable',
             ),
             _SettingRow(
               label: 'AiOS API',

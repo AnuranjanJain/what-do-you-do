@@ -416,6 +416,7 @@ class AgentDesktopSnapshot {
     required this.dataDir,
     required this.importsDir,
     required this.updatedAt,
+    this.stale = false,
     this.projects = const ProjectContextSnapshot.empty(),
     this.college = const CollegeWorkSnapshot.empty(),
     this.applications = const ApplicationPortfolio.empty(),
@@ -446,6 +447,7 @@ class AgentDesktopSnapshot {
       dataDir: '',
       importsDir: '',
       updatedAt: '',
+      stale: false,
       projects: const ProjectContextSnapshot.empty(),
       college: const CollegeWorkSnapshot.empty(),
       applications: const ApplicationPortfolio.empty(),
@@ -506,6 +508,7 @@ class AgentDesktopSnapshot {
       dataDir: desktop['data_dir']?.toString() ?? '',
       importsDir: desktop['imports_dir']?.toString() ?? '',
       updatedAt: live['updated_at']?.toString() ?? '',
+      stale: false,
       projects: ProjectContextSnapshot.fromJson(projects),
       college: CollegeWorkSnapshot.fromJson(college),
       applications: ApplicationPortfolio.fromJson(applications),
@@ -535,11 +538,45 @@ class AgentDesktopSnapshot {
   final String dataDir;
   final String importsDir;
   final String updatedAt;
+  final bool stale;
   final ProjectContextSnapshot projects;
   final CollegeWorkSnapshot college;
   final ApplicationPortfolio applications;
 
   int get runningWorkers => workers.where((worker) => worker.running).length;
+
+  AgentDesktopSnapshot asStale(String reason) {
+    return AgentDesktopSnapshot(
+      baseUrl: baseUrl,
+      connected: true,
+      desktop: desktop,
+      message:
+          'AiOS is reconnecting. Showing the last private snapshot saved on this device. $reason',
+      wellbeingMinutes: wellbeingMinutes,
+      activeReminders: activeReminders,
+      opportunities: opportunities,
+      hackathons: hackathons,
+      placements: placements,
+      neopat: neopat,
+      unreadHackathonUpdates: unreadHackathonUpdates,
+      unreadPlacementUpdates: unreadPlacementUpdates,
+      unreadNeoPatUpdates: unreadNeoPatUpdates,
+      workers: workers,
+      reminders: reminders,
+      planSummary: planSummary,
+      latestOpportunityTitle: latestOpportunityTitle,
+      latestActivitySummary: latestActivitySummary,
+      intelligence: intelligence,
+      readiness: readiness,
+      dataDir: dataDir,
+      importsDir: importsDir,
+      updatedAt: updatedAt,
+      stale: true,
+      projects: projects,
+      college: college,
+      applications: applications,
+    );
+  }
 }
 
 class ProjectContextSnapshot {
