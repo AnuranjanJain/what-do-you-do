@@ -379,6 +379,8 @@ class DashboardPage extends StatelessWidget {
           const SizedBox(height: 14),
           _IntelligenceStrip(intelligence: controller.agent.intelligence),
           const SizedBox(height: 14),
+          _EmailIntelligenceOverview(portfolio: controller.agent.applications),
+          const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final columns = constraints.maxWidth > 1050
@@ -470,6 +472,165 @@ class DashboardPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EmailIntelligenceOverview extends StatelessWidget {
+  const _EmailIntelligenceOverview({required this.portfolio});
+
+  final ApplicationPortfolio portfolio;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = portfolio.stats;
+    final hackathons = portfolio.hackathons.stats;
+    final cards = [
+      (
+        'Applied',
+        '${stats.applied}',
+        'personal applications',
+        Icons.work_outline,
+        AppColors.yellow.withValues(alpha: 0.5),
+      ),
+      (
+        'Selected',
+        '${stats.selected}',
+        '${stats.selectedRate}% reached a further round',
+        Icons.trending_up_rounded,
+        AppColors.mint,
+      ),
+      (
+        'No response',
+        '${stats.noResponse}',
+        'waiting at least 7 days',
+        Icons.hourglass_empty_rounded,
+        AppColors.peach,
+      ),
+      (
+        'No further email',
+        '${stats.noFurtherEmail}',
+        'only one related message',
+        Icons.mark_email_unread_outlined,
+        AppColors.ice,
+      ),
+      (
+        'Hackathons',
+        '${hackathons.total}',
+        '${hackathons.applied} applied or building',
+        Icons.emoji_events_outlined,
+        const Color(0xFFD9D3FF),
+      ),
+      (
+        'Hackathon selections',
+        '${hackathons.selected}',
+        '${hackathons.submitted} submitted, ${hackathons.dueSoon} due soon',
+        Icons.workspace_premium_outlined,
+        const Color(0xFFD9F1E4),
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'EMAIL INTELLIGENCE',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'What happened after applying',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${stats.emailsScanned}/${stats.scanLimit} combined mails',
+              style: const TextStyle(color: Colors.grey, fontSize: 11),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 1080
+                ? 6
+                : constraints.maxWidth >= 700
+                ? 3
+                : 2;
+            return GridView.count(
+              crossAxisCount: columns,
+              childAspectRatio: columns == 6 ? 1.3 : 1.55,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                for (final card in cards)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: card.$5,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                card.$1,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            Icon(card.$4, size: 18),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          card.$2,
+                          style: const TextStyle(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          card.$3,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 10,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -2863,7 +3024,17 @@ class _TimelineTile extends StatelessWidget {
   }
 }
 
-enum _ApplicationFilter { all, applied, assessment, interview, offer, archive }
+enum _ApplicationFilter {
+  all,
+  applied,
+  selected,
+  noResponse,
+  noFurtherEmail,
+  assessment,
+  interview,
+  rejected,
+  archive,
+}
 
 class ApplicationsPage extends StatefulWidget {
   const ApplicationsPage({required this.controller, super.key});
@@ -2885,7 +3056,7 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
       eyebrow: 'Career pipeline',
       title: 'Applications',
       subtitle: widget.controller.agent.connected
-          ? '${portfolio.stats.emailsScanned} local emails scanned across ${portfolio.stats.accounts} connected accounts. The latest 100 companies stay active; older applications move to Archive.'
+          ? '${portfolio.stats.emailsScanned} of the latest ${portfolio.stats.scanLimit} combined emails scanned across ${portfolio.stats.accountsScanned} accounts. Job alerts and generic broadcasts are excluded.'
           : 'Start AiOS Assistant to load locally analyzed job and internship mail.',
       action: IconButton(
         tooltip: 'Sync application mail',
@@ -2904,6 +3075,7 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
           _ApplicationControls(
             selected: filter,
             archiveCount: portfolio.stats.archived,
+            totalCount: portfolio.stats.total,
             onFilter: (value) => setState(() => filter = value),
             onSearch: (value) => setState(() => query = value.trim()),
           ),
@@ -2943,11 +3115,14 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
       final matchesStage = switch (filter) {
         _ApplicationFilter.all || _ApplicationFilter.archive => true,
         _ApplicationFilter.applied => item.stage == 'applied',
+        _ApplicationFilter.selected => item.selectedForNextStep,
+        _ApplicationFilter.noResponse => item.responseStatus == 'no_response',
+        _ApplicationFilter.noFurtherEmail => !item.hasFurtherEmail,
         _ApplicationFilter.assessment =>
           item.stage == 'assessment' || item.stage == 'project',
         _ApplicationFilter.interview =>
           item.stage == 'interview' || item.stage == 'shortlisted',
-        _ApplicationFilter.offer => item.stage == 'offer',
+        _ApplicationFilter.rejected => item.stage == 'rejected',
       };
       final terms =
           '${item.company} ${item.role} ${item.platform} ${item.sourceAccounts.join(' ')}'
@@ -2966,31 +3141,52 @@ class _ApplicationMetrics extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       (
-        'Active applications',
-        '${stats.active}',
+        'Applied',
+        '${stats.applied}',
         AppColors.yellow.withValues(alpha: 0.52),
         Icons.work_outline,
       ),
       (
-        'Need action',
-        '${stats.needsAction}',
-        AppColors.peach,
-        Icons.priority_high_rounded,
-      ),
-      (
-        'Next rounds',
-        '${stats.nextSteps}',
+        'Selected',
+        '${stats.selected}',
         AppColors.mint,
         Icons.trending_up_rounded,
       ),
-      ('Archived', '${stats.archived}', AppColors.ice, Icons.archive_outlined),
+      (
+        'No response',
+        '${stats.noResponse}',
+        AppColors.peach,
+        Icons.hourglass_empty_rounded,
+      ),
+      (
+        'No further email',
+        '${stats.noFurtherEmail}',
+        AppColors.ice,
+        Icons.mark_email_unread_outlined,
+      ),
+      (
+        'Rejected',
+        '${stats.rejected}',
+        const Color(0xFFFFD8D2),
+        Icons.cancel_outlined,
+      ),
+      (
+        'Selection rate',
+        '${stats.selectedRate}%',
+        const Color(0xFFD9D3FF),
+        Icons.analytics_outlined,
+      ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900 ? 4 : 2;
+        final columns = constraints.maxWidth >= 1050
+            ? 6
+            : constraints.maxWidth >= 640
+            ? 3
+            : 2;
         return GridView.count(
           crossAxisCount: columns,
-          childAspectRatio: columns == 4 ? 2.25 : 1.85,
+          childAspectRatio: columns == 6 ? 1.72 : 1.85,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
           shrinkWrap: true,
@@ -3044,11 +3240,13 @@ class _ApplicationControls extends StatelessWidget {
   const _ApplicationControls({
     required this.selected,
     required this.archiveCount,
+    required this.totalCount,
     required this.onFilter,
     required this.onSearch,
   });
   final _ApplicationFilter selected;
   final int archiveCount;
+  final int totalCount;
   final ValueChanged<_ApplicationFilter> onFilter;
   final ValueChanged<String> onSearch;
 
@@ -3068,11 +3266,17 @@ class _ApplicationControls extends StatelessWidget {
             spacing: 7,
             runSpacing: 7,
             children: [
-              _filterChip('All 100', _ApplicationFilter.all),
+              _filterChip('All $totalCount', _ApplicationFilter.all),
               _filterChip('Applied', _ApplicationFilter.applied),
+              _filterChip('Selected', _ApplicationFilter.selected),
+              _filterChip('No response', _ApplicationFilter.noResponse),
+              _filterChip(
+                'No further email',
+                _ApplicationFilter.noFurtherEmail,
+              ),
               _filterChip('Assessment', _ApplicationFilter.assessment),
               _filterChip('Interview', _ApplicationFilter.interview),
-              _filterChip('Offer', _ApplicationFilter.offer),
+              _filterChip('Rejected', _ApplicationFilter.rejected),
               _filterChip('Archive $archiveCount', _ApplicationFilter.archive),
             ],
           );
@@ -3248,9 +3452,9 @@ class _ApplicationRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      application.timeline.isEmpty
-                          ? 'No timeline yet'
-                          : '${application.timeline.length} email updates grouped',
+                      '${application.responseLabel} | ${application.mailCount} grouped mail${application.mailCount == 1 ? '' : 's'}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.grey, fontSize: 10),
                     ),
                   ],
@@ -3301,7 +3505,13 @@ class _ApplicationDeadlinePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final days = application.daysLeft;
     final label = days == null
-        ? (application.stage == 'rejected' ? 'Closed' : 'Waiting')
+        ? application.stage == 'rejected'
+              ? 'Closed'
+              : application.responseStatus == 'no_response'
+              ? '${application.daysWaiting}d no reply'
+              : application.hasFurtherEmail
+              ? 'Updated'
+              : '1 mail'
         : days < 0
         ? 'Overdue'
         : days == 0
@@ -3546,7 +3756,10 @@ Future<void> _showApplicationDetails(
                 runSpacing: 8,
                 children: [
                   Chip(label: Text(item.stageLabel)),
+                  Chip(label: Text(item.responseLabel)),
                   Chip(label: Text(item.platform)),
+                  Chip(label: Text('${item.mailCount} grouped emails')),
+                  Chip(label: Text('${item.confidence.round()}% confidence')),
                   if (item.appliedAt.isNotEmpty)
                     Chip(
                       label: Text(
@@ -3662,11 +3875,12 @@ class HackathonsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mailStats = controller.agent.applications.hackathons.stats;
     return _StandardPage(
       eyebrow: 'Opportunity tracker',
       title: 'Hackathon corner',
       subtitle: controller.agent.connected
-          ? '${controller.agent.hackathons} AiOS source items, ${controller.agent.unreadHackathonUpdates} unread updates.'
+          ? '${mailStats.total} deduplicated events from the combined mail window. ${mailStats.applied} applied or building, ${mailStats.selected} selected.'
           : 'Plans, deadlines, progress, and work logs from local storage.',
       action: IconButton(
         tooltip: 'Refresh',

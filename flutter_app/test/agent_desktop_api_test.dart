@@ -217,10 +217,31 @@ void main() {
         if (request.url.path == '/api/applications') {
           return jsonResponse({
             'stats': {
+              'total': 1,
+              'applied': 1,
+              'selected': 1,
+              'selected_rate': 100,
+              'no_response': 0,
+              'no_further_email': 0,
+              'awaiting_response': 0,
+              'rejected': 0,
               'active': 1,
               'archived': 0,
-              'emails_scanned': 100,
+              'emails_scanned': 500,
+              'emails_available': 649,
+              'scan_limit': 500,
               'accounts': 2,
+            },
+            'hackathons': {
+              'stats': {
+                'total': 3,
+                'applied': 2,
+                'selected': 1,
+                'building': 1,
+                'submitted': 1,
+                'won': 0,
+              },
+              'items': <Map<String, dynamic>>[],
             },
             'active': [
               {
@@ -230,7 +251,13 @@ void main() {
                 'roles': ['Software Intern'],
                 'stage': 'assessment',
                 'stage_label': 'Assessment / test',
+                'response_status': 'selected',
+                'response_label': 'Selected',
                 'selected_for_next_step': true,
+                'has_further_email': true,
+                'mail_count': 3,
+                'days_waiting': 1,
+                'confidence': 0.92,
                 'needs_action': true,
                 'platform': 'LinkedIn',
                 'platforms': ['LinkedIn'],
@@ -258,6 +285,14 @@ void main() {
 
       expect(snapshot.applications.active, hasLength(1));
       expect(snapshot.applications.active.first.company, 'Example');
+      expect(snapshot.applications.stats.applied, 1);
+      expect(snapshot.applications.stats.selected, 1);
+      expect(snapshot.applications.stats.selectedRate, 100);
+      expect(snapshot.applications.stats.emailsScanned, 500);
+      expect(snapshot.applications.active.first.responseStatus, 'selected');
+      expect(snapshot.applications.active.first.mailCount, 3);
+      expect(snapshot.applications.hackathons.stats.total, 3);
+      expect(snapshot.applications.hackathons.stats.selected, 1);
       expect(
         snapshot.applications.active.first.sourceEmail?.accountEmail,
         'jobs@example.com',

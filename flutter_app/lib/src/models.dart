@@ -130,6 +130,9 @@ class ApplicationPortfolio {
     required this.today,
     required this.dueSoon,
     required this.stats,
+    required this.statusCounts,
+    required this.mailCategories,
+    required this.hackathons,
     required this.updatedAt,
   });
 
@@ -139,6 +142,9 @@ class ApplicationPortfolio {
       today = const [],
       dueSoon = const [],
       stats = const ApplicationStats.empty(),
+      statusCounts = const [],
+      mailCategories = const [],
+      hackathons = const HackathonMailOverview.empty(),
       updatedAt = '';
 
   factory ApplicationPortfolio.fromJson(Map<String, dynamic> json) {
@@ -155,6 +161,17 @@ class ApplicationPortfolio {
       stats: ApplicationStats.fromJson(
         json['stats'] as Map<String, dynamic>? ?? const {},
       ),
+      statusCounts: (json['status_counts'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(ApplicationStatusCount.fromJson)
+          .toList(),
+      mailCategories: (json['mail_categories'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(MailCategoryStat.fromJson)
+          .toList(),
+      hackathons: HackathonMailOverview.fromJson(
+        json['hackathons'] as Map<String, dynamic>? ?? const {},
+      ),
       updatedAt: json['updated_at']?.toString() ?? '',
     );
   }
@@ -164,6 +181,9 @@ class ApplicationPortfolio {
   final List<ApplicationRecord> today;
   final List<ApplicationRecord> dueSoon;
   final ApplicationStats stats;
+  final List<ApplicationStatusCount> statusCounts;
+  final List<MailCategoryStat> mailCategories;
+  final HackathonMailOverview hackathons;
   final String updatedAt;
 }
 
@@ -171,42 +191,189 @@ class ApplicationStats {
   const ApplicationStats({
     required this.active,
     required this.archived,
+    required this.total,
+    required this.applied,
+    required this.selected,
+    required this.selectedRate,
+    required this.noResponse,
+    required this.noFurtherEmail,
+    required this.awaitingResponse,
+    required this.rejected,
     required this.needsAction,
     required this.nextSteps,
     required this.offers,
     required this.emailsScanned,
+    required this.emailsAvailable,
+    required this.scanLimit,
     required this.accounts,
+    required this.accountsScanned,
   });
 
   const ApplicationStats.empty()
     : active = 0,
       archived = 0,
+      total = 0,
+      applied = 0,
+      selected = 0,
+      selectedRate = 0,
+      noResponse = 0,
+      noFurtherEmail = 0,
+      awaitingResponse = 0,
+      rejected = 0,
       needsAction = 0,
       nextSteps = 0,
       offers = 0,
       emailsScanned = 0,
-      accounts = 0;
+      emailsAvailable = 0,
+      scanLimit = 500,
+      accounts = 0,
+      accountsScanned = 0;
 
   factory ApplicationStats.fromJson(Map<String, dynamic> json) {
     int value(String key) => (json[key] as num?)?.round() ?? 0;
     return ApplicationStats(
       active: value('active'),
       archived: value('archived'),
+      total: value('total'),
+      applied: value('applied'),
+      selected: value('selected'),
+      selectedRate: value('selected_rate'),
+      noResponse: value('no_response'),
+      noFurtherEmail: value('no_further_email'),
+      awaitingResponse: value('awaiting_response'),
+      rejected: value('rejected'),
       needsAction: value('needs_action'),
       nextSteps: value('next_steps'),
       offers: value('offers'),
       emailsScanned: value('emails_scanned'),
+      emailsAvailable: value('emails_available'),
+      scanLimit: value('scan_limit'),
       accounts: value('accounts'),
+      accountsScanned: value('accounts_scanned'),
     );
   }
 
   final int active;
   final int archived;
+  final int total;
+  final int applied;
+  final int selected;
+  final int selectedRate;
+  final int noResponse;
+  final int noFurtherEmail;
+  final int awaitingResponse;
+  final int rejected;
   final int needsAction;
   final int nextSteps;
   final int offers;
   final int emailsScanned;
+  final int emailsAvailable;
+  final int scanLimit;
   final int accounts;
+  final int accountsScanned;
+}
+
+class ApplicationStatusCount {
+  const ApplicationStatusCount({
+    required this.key,
+    required this.label,
+    required this.count,
+  });
+
+  factory ApplicationStatusCount.fromJson(Map<String, dynamic> json) {
+    return ApplicationStatusCount(
+      key: json['key']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+      count: (json['count'] as num?)?.round() ?? 0,
+    );
+  }
+
+  final String key;
+  final String label;
+  final int count;
+}
+
+class MailCategoryStat {
+  const MailCategoryStat({
+    required this.label,
+    required this.count,
+    required this.percent,
+  });
+
+  factory MailCategoryStat.fromJson(Map<String, dynamic> json) {
+    return MailCategoryStat(
+      label: json['label']?.toString() ?? 'Other inbox',
+      count: (json['count'] as num?)?.round() ?? 0,
+      percent: (json['percent'] as num?)?.round() ?? 0,
+    );
+  }
+
+  final String label;
+  final int count;
+  final int percent;
+}
+
+class HackathonMailOverview {
+  const HackathonMailOverview({required this.stats});
+
+  const HackathonMailOverview.empty()
+    : stats = const HackathonMailStats.empty();
+
+  factory HackathonMailOverview.fromJson(Map<String, dynamic> json) {
+    return HackathonMailOverview(
+      stats: HackathonMailStats.fromJson(
+        json['stats'] as Map<String, dynamic>? ?? const {},
+      ),
+    );
+  }
+
+  final HackathonMailStats stats;
+}
+
+class HackathonMailStats {
+  const HackathonMailStats({
+    required this.total,
+    required this.discovered,
+    required this.applied,
+    required this.building,
+    required this.submitted,
+    required this.selected,
+    required this.won,
+    required this.dueSoon,
+  });
+
+  const HackathonMailStats.empty()
+    : total = 0,
+      discovered = 0,
+      applied = 0,
+      building = 0,
+      submitted = 0,
+      selected = 0,
+      won = 0,
+      dueSoon = 0;
+
+  factory HackathonMailStats.fromJson(Map<String, dynamic> json) {
+    int value(String key) => (json[key] as num?)?.round() ?? 0;
+    return HackathonMailStats(
+      total: value('total'),
+      discovered: value('discovered'),
+      applied: value('applied'),
+      building: value('building'),
+      submitted: value('submitted'),
+      selected: value('selected'),
+      won: value('won'),
+      dueSoon: value('due_soon'),
+    );
+  }
+
+  final int total;
+  final int discovered;
+  final int applied;
+  final int building;
+  final int submitted;
+  final int selected;
+  final int won;
+  final int dueSoon;
 }
 
 class ApplicationRecord {
@@ -217,8 +384,14 @@ class ApplicationRecord {
     required this.roles,
     required this.stage,
     required this.stageLabel,
+    required this.responseStatus,
+    required this.responseLabel,
     required this.selectedForNextStep,
     required this.needsAction,
+    required this.hasFurtherEmail,
+    required this.mailCount,
+    required this.daysWaiting,
+    required this.confidence,
     required this.appliedAt,
     required this.appliedDateInferred,
     required this.latestActivityAt,
@@ -246,8 +419,15 @@ class ApplicationRecord {
       roles: _stringList(json['roles']),
       stage: json['stage']?.toString() ?? 'tracked',
       stageLabel: json['stage_label']?.toString() ?? 'Tracking',
+      responseStatus:
+          json['response_status']?.toString() ?? 'awaiting_response',
+      responseLabel: json['response_label']?.toString() ?? 'Awaiting response',
       selectedForNextStep: json['selected_for_next_step'] == true,
       needsAction: json['needs_action'] == true,
+      hasFurtherEmail: json['has_further_email'] == true,
+      mailCount: (json['mail_count'] as num?)?.round() ?? 0,
+      daysWaiting: (json['days_waiting'] as num?)?.round() ?? 0,
+      confidence: ((json['confidence'] as num?)?.toDouble() ?? 0) * 100,
       appliedAt: json['applied_at']?.toString() ?? '',
       appliedDateInferred: json['applied_date_inferred'] == true,
       latestActivityAt: json['latest_activity_at']?.toString() ?? '',
@@ -282,8 +462,14 @@ class ApplicationRecord {
   final List<String> roles;
   final String stage;
   final String stageLabel;
+  final String responseStatus;
+  final String responseLabel;
   final bool selectedForNextStep;
   final bool needsAction;
+  final bool hasFurtherEmail;
+  final int mailCount;
+  final int daysWaiting;
+  final double confidence;
   final String appliedAt;
   final bool appliedDateInferred;
   final String latestActivityAt;
@@ -487,7 +673,12 @@ class AgentDesktopSnapshot {
       wellbeingMinutes: (stats['wellbeing_minutes'] as num?)?.round() ?? 0,
       activeReminders: (stats['active_reminders'] as num?)?.round() ?? 0,
       opportunities: (stats['opportunities'] as num?)?.round() ?? 0,
-      hackathons: _countList(hackathons['hackathons']),
+      hackathons:
+          ((((applications['hackathons'] as Map<String, dynamic>?)?['stats']
+                      as Map<String, dynamic>?)?['total']
+                  as num?)
+              ?.round()) ??
+          _countList(hackathons['hackathons']),
       placements:
           ((applications['stats'] as Map<String, dynamic>?)?['active'] as num?)
               ?.round() ??

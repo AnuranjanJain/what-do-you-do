@@ -30,7 +30,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Career pipeline'.toUpperCase()), findsOneWidget);
-      expect(find.text('All 100'), findsOneWidget);
+      expect(find.text('All 2'), findsOneWidget);
+      expect(find.text('No response'), findsWidgets);
       expect(find.text('Archive 1'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
@@ -74,11 +75,22 @@ AgentDesktopSnapshot _snapshot() {
       'stats': {
         'active': 1,
         'archived': 1,
+        'total': 2,
+        'applied': 2,
+        'selected': 1,
+        'selected_rate': 50,
+        'no_response': 0,
+        'no_further_email': 1,
+        'awaiting_response': 0,
+        'rejected': 1,
         'needs_action': 1,
         'next_steps': 1,
         'offers': 0,
         'emails_scanned': 200,
+        'emails_available': 200,
+        'scan_limit': 500,
         'accounts': 2,
+        'accounts_scanned': 2,
       },
       'active': [
         {
@@ -88,8 +100,14 @@ AgentDesktopSnapshot _snapshot() {
           'roles': ['Backend Intern'],
           'stage': 'interview',
           'stage_label': 'Interview scheduled',
+          'response_status': 'selected',
+          'response_label': 'Selected / next round',
           'selected_for_next_step': true,
           'needs_action': true,
+          'has_further_email': true,
+          'mail_count': 2,
+          'days_waiting': 6,
+          'confidence': 0.94,
           'applied_at': '2026-07-12T09:00:00',
           'latest_activity_at': '2026-07-18T09:00:00',
           'deadline': '2026-07-20T09:00:00',
@@ -129,8 +147,14 @@ AgentDesktopSnapshot _snapshot() {
           'roles': ['Software Intern'],
           'stage': 'rejected',
           'stage_label': 'Closed / rejected',
+          'response_status': 'rejected',
+          'response_label': 'Closed / rejected',
           'selected_for_next_step': false,
           'needs_action': false,
+          'has_further_email': true,
+          'mail_count': 2,
+          'days_waiting': 18,
+          'confidence': 0.91,
           'applied_at': '2025-01-02T09:00:00',
           'latest_activity_at': '2025-01-20T09:00:00',
           'platform': 'Company website',

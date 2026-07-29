@@ -48,6 +48,7 @@ WDYD v2 keeps the boundary clean:
 - **AiOS owns Email Intelligence**: Gmail OAuth, encrypted tokens, local email sync, Ollama analysis, semantic search, and daily/weekly planning.
 - **AiOS owns Command Planner rows**: hackathons, repo work, email tasks, learning videos, goals, work done, work left, and next questions.
 - **WDYD displays the result**: planner cards, today/week/month command rows, urgent email counts, deadlines, waiting-for, suggestions, and focus summaries.
+- **Applications stay deduplicated**: AiOS classifies the latest 500 emails combined across enabled accounts, groups company timelines, and shares only approved funnel statistics and summaries with WDYD.
 
 ## How It Works
 
