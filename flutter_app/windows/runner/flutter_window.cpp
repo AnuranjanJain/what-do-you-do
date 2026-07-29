@@ -2,13 +2,61 @@
 
 #include <optional>
 #include <shellapi.h>
+#include <vector>
 
 #include "flutter/generated_plugin_registrant.h"
 #include "resource.h"
+#include "utils.h"
 
 namespace {
 constexpr UINT kTrayIconId = 1;
 constexpr UINT kTrayMessage = WM_APP + 1;
+
+flutter::EncodableValue GetActivitySnapshot() {
+  HWND foreground = GetForegroundWindow();
+  const int title_length = GetWindowTextLengthW(foreground);
+  std::vector<wchar_t> title(static_cast<size_t>(title_length) + 1, L'\0');
+  GetWindowTextW(foreground, title.data(), static_cast<int>(title.size()));
+
+  DWORD process_id = 0;
+  GetWindowThreadProcessId(foreground, &process_id);
+  std::wstring process_name = L"Unknown";
+  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
+                               process_id);
+  if (process != nullptr) {
+    std::vector<wchar_t> process_path(32768, L'\0');
+    DWORD process_path_size = static_cast<DWORD>(process_path.size());
+    if (QueryFullProcessImageNameW(process, 0, process_path.data(),
+                                   &process_path_size)) {
+      std::wstring path(process_path.data(), process_path_size);
+      const size_t separator = path.find_last_of(L"\\/");
+      process_name = separator == std::wstring::npos
+                         ? path
+                         : path.substr(separator + 1);
+      const size_t extension = process_name.rfind(L'.');
+      if (extension != std::wstring::npos) {
+        process_name = process_name.substr(0, extension);
+      }
+    }
+    CloseHandle(process);
+  }
+
+  LASTINPUTINFO last_input{};
+  last_input.cbSize = sizeof(LASTINPUTINFO);
+  GetLastInputInfo(&last_input);
+  const ULONGLONG idle_ms = GetTickCount64() - last_input.dwTime;
+
+  flutter::EncodableMap result;
+  result[flutter::EncodableValue("foregroundWindowTitle")] =
+      flutter::EncodableValue(Utf8FromUtf16(title.data()));
+  result[flutter::EncodableValue("processName")] =
+      flutter::EncodableValue(Utf8FromUtf16(process_name.c_str()));
+  result[flutter::EncodableValue("processId")] =
+      flutter::EncodableValue(static_cast<int64_t>(process_id));
+  result[flutter::EncodableValue("idleMs")] =
+      flutter::EncodableValue(static_cast<int64_t>(idle_ms));
+  return flutter::EncodableValue(result);
+}
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project,
@@ -172,6 +220,21 @@ void FlutterWindow::RegisterLifecycleChannel() {
           return;
         }
 
+        result->NotImplemented();
+      });
+
+  activity_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "wdyd/native_activity",
+          &flutter::StandardMethodCodec::GetInstance());
+  activity_channel_->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+             result) {
+        if (call.method_name() == "getActivitySnapshot") {
+          result->Success(GetActivitySnapshot());
+          return;
+        }
         result->NotImplemented();
       });
 }

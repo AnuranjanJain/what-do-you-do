@@ -3,8 +3,8 @@
 The native Windows application UI lives in `flutter_app/`.
 
 Flutter is the installed Windows app surface. The React/Vite browser dashboard
-remains the Linux v1 surface, so the two clients share the local collector and
-privacy boundary instead of one replacing the other.
+remains the Linux v1 surface. Each platform owns its local collection runtime
+while keeping the same privacy and data contracts.
 
 ## Reused system boundary
 
@@ -12,22 +12,22 @@ privacy boundary instead of one replacing the other.
 Local activity signals
         |
         v
-Node local collector on 127.0.0.1:17321
+Win32 activity method channel inside the Flutter process
         |
-        +--> daily local JSON storage
+        +--> daily local JSON storage under LocalAppData
         |
         +--> Windows Flutter app
         |
-        +--> Linux browser client
-        |
         +--> optional approved AiOS summaries
+
+Linux browser client --> Linux local collector/API --> Linux local JSON
 ```
 
-The Windows Flutter client currently uses:
+The Windows Flutter client currently owns:
 
-- `GET /health`
-- `GET /sessions?date=YYYY-MM-DD`
-- `GET /hackathons`
+- foreground-window and idle snapshots through Win32
+- classification, session rollovers, and daily local JSON persistence in Dart
+- local hackathon and settings persistence
 - AiOS Desktop pairing through `GET /api/local/pairing`
 - AiOS Desktop service reads through `GET /api/live`, `GET /api/workers`,
   `GET /api/desktop/status`, `GET /api/hackathons`, `GET /api/placements`,
@@ -54,12 +54,6 @@ Flutter SDK location on the current development machine:
 
 ```text
 C:\Users\anura\development\flutter
-```
-
-Run the collector from the repository root:
-
-```powershell
-npm run collector:dev
 ```
 
 Run the Windows Flutter app:
@@ -90,19 +84,16 @@ flutter_app\build\windows\x64\runner\Release\
 Keep the entire Release directory together; the executable depends on the
 adjacent Flutter DLL and data directory.
 
-The installer also copies the local collector into the installed app directory
-and adds `start-collector.ps1`. Settings can create Windows Startup shortcuts
-for both the app and the hidden collector launcher.
+The installer copies only the Flutter release. Settings can create a Windows
+Startup shortcut for the app in visible or hidden tray mode.
 
 ## Next Windows app work
 
-1. Move the Node collector into a self-contained native sidecar.
-2. Add correction and note editing from Flutter.
-3. Add create/edit/delete forms for hackathons.
-4. Add approved-summary sync controls to the Flutter UI.
-5. Add native Windows notifications and tray behavior.
-6. Package and sign the Flutter Windows release.
-7. Revisit Android/iOS as future companion clients after the Windows app is stable.
+1. Add correction and note editing from Flutter.
+2. Add create/edit/delete forms for hackathons.
+3. Add native Windows notifications.
+4. Sign the Flutter Windows release.
+5. Revisit Android/iOS as future companion clients after the Windows app is stable.
 
 The React/Vite client remains in the repository as the Linux/browser client.
 The Tauri wrapper remains historical migration reference unless it is removed

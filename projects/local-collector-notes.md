@@ -1,7 +1,8 @@
 # Local Collector Notes
 
-The project includes a local Windows activity collector used by both the Linux
-browser dashboard and the Windows Flutter app.
+The `linux-browser` branch keeps the loopback collector described below for the
+React/Vite client. The `windows-native` branch collects the same signal types
+inside the Flutter process through Win32 APIs and does not open port `17321`.
 
 ## What it collects
 
@@ -54,24 +55,17 @@ npm run collector:dev
 
 When the collector is running, the dashboard switches from simulator fallback to live desktop collector mode. The dashboard can also view persisted history by date.
 
-## Windows installed app startup
+## Windows native replacement
 
-The Flutter installer copies the collector scripts into:
-
-```text
-%LOCALAPPDATA%\Programs\What Do You Do\collector\
-```
-
-It also installs:
+The Windows installer copies the Flutter runtime into:
 
 ```text
-%LOCALAPPDATA%\Programs\What Do You Do\start-collector.ps1
+%LOCALAPPDATA%\Programs\What Do You Do\
 ```
 
 The Windows app Settings screen can create Startup folder shortcuts for:
 
 - launching the app at sign-in
-- launching the hidden local collector at sign-in
+- launching the app hidden in the tray at sign-in
 
-The packaged launcher stores sessions under `%LOCALAPPDATA%\What Do You Do\data`
-and logs under `%LOCALAPPDATA%\What Do You Do\logs`.
+The native app stores sessions under `%LOCALAPPDATA%\What Do You Do\data`.

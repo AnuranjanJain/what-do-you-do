@@ -34,6 +34,8 @@ class FlutterWindow : public Win32Window {
 
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       lifecycle_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      activity_channel_;
 
   bool start_hidden_ = false;
   bool exiting_ = false;

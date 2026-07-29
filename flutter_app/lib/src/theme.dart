@@ -32,10 +32,36 @@ abstract final class AppTheme {
     required Color surface,
     required Color text,
   }) {
-    final scheme = ColorScheme.fromSeed(
+    final dark = brightness == Brightness.dark;
+    final baseScheme = ColorScheme.fromSeed(
       seedColor: AppColors.yellow,
       brightness: brightness,
       surface: surface,
+    );
+    final scheme = baseScheme.copyWith(
+      primary: dark ? AppColors.yellow : AppColors.ink,
+      onPrimary: dark ? AppColors.ink : Colors.white,
+      secondary: dark ? AppColors.mint : AppColors.purple,
+      onSecondary: dark ? AppColors.ink : Colors.white,
+      surface: surface,
+      onSurface: text,
+      surfaceContainerLowest: dark
+          ? const Color(0xFF171915)
+          : const Color(0xFFF9F8F2),
+      surfaceContainerLow: dark
+          ? const Color(0xFF20221E)
+          : const Color(0xFFF0EFE8),
+      surfaceContainer: dark
+          ? const Color(0xFF252722)
+          : const Color(0xFFEAE9E1),
+      surfaceContainerHigh: dark
+          ? const Color(0xFF2A2C27)
+          : const Color(0xFFE4E3DB),
+      surfaceContainerHighest: dark
+          ? const Color(0xFF30322C)
+          : const Color(0xFFDCDBD3),
+      outline: dark ? const Color(0xFF8D9186) : const Color(0xFF73776F),
+      outlineVariant: dark ? const Color(0xFF44473F) : const Color(0xFFC7C7BD),
     );
     return ThemeData(
       useMaterial3: true,
@@ -68,6 +94,45 @@ abstract final class AppTheme {
           ),
         ),
       ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant.withValues(alpha: 0.72),
+        thickness: 1,
+        space: 1,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerLow,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.surfaceContainerHighest,
+        selectedColor: AppColors.yellow.withValues(alpha: 0.4),
+        side: BorderSide(color: scheme.outlineVariant),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? (dark ? AppColors.ink : Colors.white)
+              : scheme.outline,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? scheme.primary
+              : scheme.surfaceContainerHighest,
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(44, 42),
@@ -96,6 +161,17 @@ abstract final class AppTheme {
             : AppColors.yellow,
         selectedIconTheme: IconThemeData(
           color: brightness == Brightness.light ? Colors.white : AppColors.ink,
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surfaceContainerLow,
+        indicatorColor: dark ? AppColors.yellow : AppColors.ink,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? (dark ? AppColors.ink : Colors.white)
+                : scheme.onSurfaceVariant,
+          ),
         ),
       ),
     );

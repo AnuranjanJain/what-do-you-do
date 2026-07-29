@@ -10,8 +10,8 @@
 
 <p align="center">
   <img alt="Local first" src="https://img.shields.io/badge/local--first-yes-FFD84D?style=for-the-badge&labelColor=1F211D" />
-  <img alt="Linux browser" src="https://img.shields.io/badge/linux-browser-DFF0E4?style=for-the-badge&labelColor=1F211D" />
-  <img alt="Windows app" src="https://img.shields.io/badge/windows-app-5ED9E8?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Windows app" src="https://img.shields.io/badge/Windows-native%20Flutter-5ED9E8?style=for-the-badge&labelColor=1F211D" />
+  <img alt="Desktop only" src="https://img.shields.io/badge/browser%20server-not%20required-DFF0E4?style=for-the-badge&labelColor=1F211D" />
   <img alt="Privacy" src="https://img.shields.io/badge/raw%20data-on%20device-DFF0E4?style=for-the-badge&labelColor=1F211D" />
 </p>
 
@@ -30,12 +30,13 @@
 
 ## The Vibe
 
-`What Do You Do` is a private activity OS with two clear app surfaces:
+This branch is the installed **Windows-native Flutter app**. It owns its packaged
+collector, reads local activity, and talks to AiOS through loopback-only approved
+summaries. No Vite server or browser dashboard is required on Windows.
 
-- **Linux:** local React/Vite dashboard in the browser
-- **Windows:** installed native Flutter desktop app
-
-Both read the same local collector data, keep raw activity on-device, and can optionally talk to AiOS / Project AI Agent through loopback-only approved summaries.
+The Linux/browser implementation is preserved on the
+[`linux-browser`](https://github.com/AnuranjanJain/what-do-you-do/tree/linux-browser)
+branch.
 
 | App | Job |
 | --- | --- |
@@ -47,17 +48,17 @@ WDYD v2 keeps the boundary clean:
 - **AiOS owns Email Intelligence**: Gmail OAuth, encrypted tokens, local email sync, Ollama analysis, semantic search, and daily/weekly planning.
 - **AiOS owns Command Planner rows**: hackathons, repo work, email tasks, learning videos, goals, work done, work left, and next questions.
 - **WDYD displays the result**: planner cards, today/week/month command rows, urgent email counts, deadlines, waiting-for, suggestions, and focus summaries.
+- **Applications stay deduplicated**: AiOS classifies the latest 500 emails combined across enabled accounts, groups company timelines, and shares only approved funnel statistics and summaries with WDYD.
 
 ## How It Works
 
 ```mermaid
 flowchart LR
-  signals["Local device signals"] --> collector["Local collector/API"]
-  collector --> store["data/*.json"]
-  store --> linux["Linux browser client"]
-  store --> windows["Windows Flutter app"]
-  linux --> dashboard["Dashboard + widgets + hackathons"]
-  windows --> dashboard
+  windows["WDYD Flutter EXE"] --> collector["App-owned local collector"]
+  signals["Windows activity signals"] --> collector
+  collector --> store["Local JSON data"]
+  store --> windows
+  windows --> dashboard["Dashboard + widgets + hackathons"]
   dashboard --> privacy["Privacy controls"]
   dashboard -. approved summaries only .-> aios["AiOS / Project AI Agent"]
   aios --> planner["Planner summaries + command rows"]
@@ -66,15 +67,12 @@ flowchart LR
 
 No screenshots, keystrokes, private messages, raw browser history, or full notes are sent to the agent. The bridge shares only approved summaries.
 
-## Run It On Linux
+## Platform Branches
 
-```powershell
-npm install
-npm run collector:dev
-npm run dev
-```
-
-Open the local Vite URL in your browser. This is the Linux v1 app surface: no `.deb`, AppImage, Flatpak, or native Linux package required.
+| Branch | Product surface |
+| --- | --- |
+| `windows-native` | Installed Flutter desktop app with app-owned local services |
+| `linux-browser` | React/Vite browser dashboard and Linux collector workflow |
 
 ## Install It On Windows
 
@@ -86,11 +84,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\instal
 
 After install, Windows Search should find **What Do You Do** from the Start Menu shortcut.
 
+Launch the installed app directly. Do not run `npm run dev` or keep a browser
+window open. Google/email intelligence remains owned by the installed AiOS app.
+
 In **Settings**, Windows users can enable:
 
 - launch the app at sign-in
 - open the app in the background tray at sign-in
-- start the packaged local collector at sign-in
+- run native activity collection inside the app process
 - hide the window to the tray or fully exit the app
 
 For Windows development:
@@ -104,40 +105,39 @@ C:\Users\anura\development\flutter\bin\flutter.bat run -d windows
 
 ```text
 .
-|-- src/                      Linux/browser React dashboard
 |-- flutter_app/              Windows native Flutter app
 |   |-- lib/src/               app shell, controller, APIs, models, theme
 |   |-- test/                  layout, summary, parsing, settings tests
 |   `-- windows/install/       local Windows install + uninstall scripts
-|-- scripts/                  local collector and API helpers
+|-- scripts/                  Linux/browser collector retained for its branch
 |-- data/                     local-only session, sync, and hackathon data
 |-- docs/screenshots/         README screenshots and GIF previews
 `-- projects/                 architecture notes and build plans
 ```
 
-## Local APIs
+## Native Data And AiOS API
 
-```text
-GET  /health
-GET  /sessions?date=YYYY-MM-DD
-GET  /hackathons
-POST /hackathons/save
-POST /hackathons/timeline
-POST /hackathons/delete
-```
+The Windows app collects activity in-process through Win32 APIs and persists
+daily JSON under `%LOCALAPPDATA%\What Do You Do\data`. It does not start Node,
+PowerShell polling, Vite, or a WDYD HTTP server.
 
-AiOS bridge endpoints are discovered through loopback pairing, usually at `http://127.0.0.1:5050`.
+The Windows client reads `%LOCALAPPDATA%\AiOS Assistant\runtime.json` first, then
+falls back to parallel loopback discovery. A healthy connection uses one
+versioned snapshot request instead of polling every feature separately.
 
 ```text
 GET /api/local/pairing
-GET /api/live
-GET /api/workers
-GET /api/hackathons
-GET /api/placements
-GET /api/neopat
+GET /api/wdyd/snapshot
 GET /api/intelligence/today
 GET /api/intelligence/search?q=internship
 ```
+
+WDYD keeps a privacy-filtered last-good snapshot under its own local app-data
+folder. During an AiOS restart, real planner, application, PAT, reminder and
+project summaries stay visible with a clear reconnecting state. Live polling
+retries every 3 seconds while reconnecting and settles to 15 seconds when
+healthy. Raw email bodies, OAuth tokens and private credentials are never cached
+by WDYD.
 
 ## Privacy Promise
 

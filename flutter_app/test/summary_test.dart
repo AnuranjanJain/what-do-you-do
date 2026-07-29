@@ -443,6 +443,25 @@ void main() {
     expect(await preferencesFile.readAsString(), contains('"darkMode":true'));
   });
 
+  test('saved theme preference is restored on startup', () async {
+    final tempDir = await Directory.systemTemp.createTemp('wdyd-theme-load-');
+    addTearDown(() => tempDir.delete(recursive: true));
+    final preferencesFile = File('${tempDir.path}\\settings.json');
+    await preferencesFile.writeAsString('{"darkMode":true}');
+
+    final controller = AppController(
+      api: _FakeCollectorApi(),
+      agentApi: _FakeAgentDesktopApi(),
+      preferencesFile: preferencesFile,
+      startupManager: _FakeStartupManager(),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+
+    expect(controller.darkMode, isTrue);
+  });
+
   test('planner question answers are sent to AiOS', () async {
     final agentApi = _FakeAgentDesktopApi();
     final controller = AppController(
@@ -602,7 +621,10 @@ class _FakeAgentDesktopApi extends AgentDesktopApi {
   bool syncedIntelligence = false;
 
   @override
-  Future<AgentDesktopSnapshot> snapshot() async =>
+  Future<AgentDesktopSnapshot?> cachedSnapshot() async => null;
+
+  @override
+  Future<AgentDesktopSnapshot> snapshot({bool forceDiscovery = false}) async =>
       AgentDesktopSnapshot.disconnected('Test agent disconnected.');
 
   @override

@@ -3,11 +3,9 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $workspaceRoot = Resolve-Path (Join-Path $repoRoot "..")
 $releaseDir = Join-Path $repoRoot "build\windows\x64\runner\Release"
-$collectorSourceDir = Join-Path $workspaceRoot "scripts\collector"
 $exeName = "what_do_you_do.exe"
 $sourceExe = Join-Path $releaseDir $exeName
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\What Do You Do"
-$collectorInstallDir = Join-Path $installDir "collector"
 $appVersion = "1.0.1"
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "What Do You Do.lnk"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
@@ -17,9 +15,6 @@ $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\What 
 if (-not (Test-Path -LiteralPath $sourceExe)) {
   throw "Release executable not found. Build first with: flutter build windows --release"
 }
-if (-not (Test-Path -LiteralPath $collectorSourceDir)) {
-  throw "Collector source directory not found at $collectorSourceDir"
-}
 
 $resolvedRelease = (Resolve-Path -LiteralPath $releaseDir).Path
 $resolvedRepo = (Resolve-Path -LiteralPath $repoRoot).Path
@@ -28,6 +23,7 @@ if (-not $resolvedRelease.StartsWith($resolvedRepo, [StringComparison]::OrdinalI
 }
 
 Get-Process what_do_you_do -ErrorAction SilentlyContinue | Stop-Process -Force
+# Stop the retired Node collector during upgrades to the in-process engine.
 Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
   Where-Object { $_.CommandLine -like "*local-activity-collector.mjs*" } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
@@ -38,12 +34,7 @@ New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 Get-ChildItem -LiteralPath $releaseDir | ForEach-Object {
   Copy-Item -LiteralPath $_.FullName -Destination $installDir -Recurse -Force
 }
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot "start-collector.ps1") -Destination $installDir -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "uninstall.ps1") -Destination $installDir -Force
-New-Item -ItemType Directory -Path $collectorInstallDir | Out-Null
-Get-ChildItem -LiteralPath $collectorSourceDir | ForEach-Object {
-  Copy-Item -LiteralPath $_.FullName -Destination $collectorInstallDir -Recurse -Force
-}
 
 $installedExe = Join-Path $installDir $exeName
 $installedUninstallScript = Join-Path $installDir "uninstall.ps1"

@@ -18,7 +18,7 @@ class AppController extends ChangeNotifier {
     File? preferencesFile,
     StartupManager? startupManager,
     WindowLifecycle? windowLifecycle,
-  }) : _api = api ?? CollectorApi(),
+  }) : _api = api ?? NativeCollectorApi(),
        _agentApi = agentApi ?? AgentDesktopApi(),
        _preferencesFileOverride = preferencesFile,
        _startupManager = startupManager ?? WindowsStartupManager(),
@@ -30,6 +30,8 @@ class AppController extends ChangeNotifier {
   final StartupManager _startupManager;
   final WindowLifecycle _windowLifecycle;
   Timer? _refreshTimer;
+  Completer<void>? _refreshCompleter;
+  bool _disposed = false;
 
   bool darkMode = false;
   bool launchAppAtLogin = false;
@@ -55,37 +57,38 @@ class AppController extends ChangeNotifier {
   Future<void> initialize() async {
     await _loadPreferences();
     await _loadStartupState();
+    final cachedAgent = await _agentApi.cachedSnapshot();
+    if (cachedAgent != null) {
+      agent = cachedAgent;
+      notifyListeners();
+    }
+    await _api.start();
     await refresh();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 4),
-      (_) => refresh(silent: true),
-    );
   }
 
   Future<void> refresh({bool silent = false}) async {
+    final activeRefresh = _refreshCompleter;
+    if (activeRefresh != null) {
+      await activeRefresh.future;
+      return;
+    }
+    _refreshTimer?.cancel();
+    final refreshCompleter = Completer<void>();
+    _refreshCompleter = refreshCompleter;
     if (!silent) {
       loading = true;
       notifyListeners();
     }
 
+    final agentFuture = _loadAgentSnapshot();
     try {
       await _api.health();
       final response = await _api.sessions(selectedDate);
       List<Hackathon> loadedHackathons = hackathons;
-      AgentDesktopSnapshot loadedAgent = agent;
       try {
         loadedHackathons = await _api.hackathons();
       } catch (_) {
         // Activity remains usable if the optional board cannot be loaded.
-      }
-      try {
-        loadedAgent = await _agentApi.snapshot();
-      } catch (error) {
-        loadedAgent = AgentDesktopSnapshot.disconnected(
-          error is Exception
-              ? error.toString().replaceFirst('Exception: ', '')
-              : 'AiOS Desktop is unavailable.',
-        );
       }
 
       collectorOnline = true;
@@ -93,28 +96,45 @@ class AppController extends ChangeNotifier {
       availableDates = response.availableDates;
       sessions = response.sessions;
       hackathons = loadedHackathons;
-      agent = loadedAgent;
       message = sessions.isEmpty
           ? 'No activity recorded for $selectedDate.'
           : '${sessions.length} private local sessions loaded.';
     } catch (_) {
       collectorOnline = false;
       sessions = const [];
-      try {
-        agent = await _agentApi.snapshot();
-      } catch (error) {
-        agent = AgentDesktopSnapshot.disconnected(
-          error is Exception
-              ? error.toString().replaceFirst('Exception: ', '')
-              : 'AiOS Desktop is unavailable.',
-        );
-      }
       message =
           'Collector is offline. Start the local collector to show real data.';
     } finally {
+      agent = await agentFuture;
       loading = false;
+      refreshCompleter.complete();
+      if (identical(_refreshCompleter, refreshCompleter)) {
+        _refreshCompleter = null;
+      }
       notifyListeners();
+      _scheduleRefresh();
     }
+  }
+
+  Future<AgentDesktopSnapshot> _loadAgentSnapshot() async {
+    try {
+      return await _agentApi.snapshot();
+    } catch (error) {
+      return AgentDesktopSnapshot.disconnected(
+        error is Exception
+            ? error.toString().replaceFirst('Exception: ', '')
+            : 'AiOS Desktop is unavailable.',
+      );
+    }
+  }
+
+  void _scheduleRefresh() {
+    if (_disposed) return;
+    _refreshTimer?.cancel();
+    final delay = !agent.connected || agent.stale
+        ? const Duration(seconds: 3)
+        : const Duration(seconds: 15);
+    _refreshTimer = Timer(delay, () => refresh(silent: true));
   }
 
   Future<void> selectDate(DateTime date) async {
@@ -174,6 +194,29 @@ class AppController extends ChangeNotifier {
           : 'Could not sync AiOS intelligence.';
       notifyListeners();
     }
+  }
+
+  Future<void> openAiOS() async {
+    message = 'Opening AiOS Desktop...';
+    notifyListeners();
+    try {
+      if (!await _agentApi.launchDesktop()) {
+        message = 'AiOS Desktop is not installed for this Windows account.';
+        notifyListeners();
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      agent = await _agentApi.snapshot(forceDiscovery: true);
+      message = agent.stale
+          ? 'AiOS opened. Reconnecting to its local service...'
+          : 'AiOS Desktop connected.';
+    } catch (error) {
+      message = error is Exception
+          ? error.toString().replaceFirst('Exception: ', '')
+          : 'AiOS opened, but its local service is still starting.';
+    }
+    notifyListeners();
+    _scheduleRefresh();
   }
 
   void toggleTheme() {
@@ -299,7 +342,10 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _refreshTimer?.cancel();
+    _api.stop();
+    _agentApi.close();
     super.dispose();
   }
 }

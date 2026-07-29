@@ -4,10 +4,11 @@ Native-rendered Windows app for the local-first `What Do You Do` activity
 intelligence system. Linux v1 uses the React/Vite browser dashboard in the
 repository root; Android and iOS remain future companion targets.
 
-The client reads privacy-filtered sessions from the local collector at
-`http://127.0.0.1:17321`. It does not collect operating-system signals itself.
-When AiOS Desktop is running, the app pairs through the loopback-only local API
-and reads approved service summaries without sending raw private activity.
+The Windows client owns its in-process activity collector and local daily JSON.
+When AiOS Desktop is running, WDYD reads its local runtime descriptor and uses a
+single token-protected loopback snapshot for approved service summaries. A
+privacy-filtered last-good snapshot keeps useful planning data visible while the
+AiOS core restarts; raw email content and credentials never enter that cache.
 
 ## Windows development
 
