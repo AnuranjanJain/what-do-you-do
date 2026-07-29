@@ -276,6 +276,7 @@ class _NavButton extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
+          key: ValueKey('nav-${destination.label}'),
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
           child: SizedBox(
@@ -617,8 +618,10 @@ class _EmailIntelligenceOverview extends StatelessWidget {
                           card.$3,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.black54,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontSize: 10,
                             height: 1.25,
                           ),
@@ -686,7 +689,7 @@ class _DashboardHero extends StatelessWidget {
               ],
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -861,7 +864,7 @@ class _MetricCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: dark ? Colors.white.withValues(alpha: 0.05) : color,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1297,12 +1300,12 @@ class CollegeWorkPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final college = controller.agent.college;
     return _StandardPage(
-      eyebrow: 'College work · PAT',
+      eyebrow: 'College work',
       title: college.headline,
       subtitle:
-          'AiOS scans connected Gmail accounts locally for PAT schedules, changes, instructions, and things you need to bring.',
+          'AiOS scans connected Gmail accounts locally for PAT classes, exams, assessments, changes, and preparation details.',
       action: IconButton(
-        tooltip: 'Sync PAT mail',
+        tooltip: 'Sync college mail',
         onPressed: controller.syncIntelligence,
         icon: const Icon(Icons.sync),
       ),
@@ -1315,7 +1318,7 @@ class CollegeWorkPage extends StatelessWidget {
           const SizedBox(height: 12),
           _Panel(
             eyebrow: college.hasClassToday
-                ? 'Class today'
+                ? 'Event today'
                 : 'Today · ${college.date.isEmpty ? 'waiting for AiOS' : college.date}',
             title: college.headline,
             child: Column(
@@ -1354,8 +1357,8 @@ class CollegeWorkPage extends StatelessWidget {
                       _CollegeFact(
                         icon: Icons.event_outlined,
                         label: college.nextEventDays == 0
-                            ? 'PAT event today'
-                            : '${college.nextEventDays} days to next PAT event',
+                            ? 'College event today'
+                            : '${college.nextEventDays} days to next college event',
                       ),
                     _CollegeFact(
                       icon: Icons.mail_outline,
@@ -1374,7 +1377,7 @@ class CollegeWorkPage extends StatelessWidget {
                 title: 'What to bring',
                 child: _TextList(
                   items: college.bring,
-                  empty: 'No required items were found in recent PAT mail.',
+                  empty: 'No required items were found in recent college mail.',
                 ),
               );
               final instructions = _Panel(
@@ -1382,7 +1385,7 @@ class CollegeWorkPage extends StatelessWidget {
                 title: 'What you need to know',
                 child: _TextList(
                   items: college.instructions,
-                  empty: 'No special PAT instructions were detected.',
+                  empty: 'No special college instructions were detected.',
                 ),
               );
               if (constraints.maxWidth < 780) {
@@ -1403,11 +1406,11 @@ class CollegeWorkPage extends StatelessWidget {
           const SizedBox(height: 12),
           _Panel(
             eyebrow: 'Mail timeline',
-            title: 'Recent PAT notices',
+            title: 'Recent college notices',
             child: college.updates.isEmpty
                 ? const _EmptyState(
                     message:
-                        'No PAT messages yet. Connect college Gmail in AiOS Settings and press Sync.',
+                        'No college messages yet. Connect college Gmail in AiOS Settings and press Sync.',
                   )
                 : Column(
                     children: [
@@ -1945,17 +1948,18 @@ class _ReadinessTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: item.ok
             ? AppColors.mint.withValues(alpha: 0.3)
-            : Colors.white.withValues(alpha: 0.48),
+            : colors.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: item.ok
               ? _readyColor.withValues(alpha: 0.28)
-              : Colors.black.withValues(alpha: 0.06),
+              : colors.outlineVariant,
         ),
       ),
       child: Row(
@@ -1964,7 +1968,7 @@ class _ReadinessTile extends StatelessWidget {
           Icon(
             item.ok ? Icons.check_circle_outline : Icons.radio_button_unchecked,
             size: 20,
-            color: item.ok ? _readyColor : Colors.black54,
+            color: item.ok ? _readyColor : colors.onSurfaceVariant,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1982,7 +1986,10 @@ class _ReadinessTile extends StatelessWidget {
                   item.detail,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
                 if (item.action.isNotEmpty) ...[
                   const SizedBox(height: 6),
@@ -1990,9 +1997,9 @@ class _ReadinessTile extends StatelessWidget {
                     item.action,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.ink,
+                      color: colors.onSurface,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -2360,7 +2367,7 @@ class _MinutesStepper extends StatelessWidget {
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black.withValues(alpha: 0.22)),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -3619,9 +3626,11 @@ class _ApplicationIntelligenceRail extends StatelessWidget {
                             item.nextAction,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Colors.black54,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -3871,33 +3880,66 @@ class HackathonsPage extends StatelessWidget {
   const HackathonsPage({required this.controller, super.key});
   final AppController controller;
 
-  static const columns = ['watching', 'applied', 'building', 'submitted'];
+  static const stages = [
+    ('discovered', 'Watching'),
+    ('applied', 'Applied'),
+    ('building', 'Building'),
+    ('submitted', 'Submitted'),
+    ('selected', 'Results'),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final mailStats = controller.agent.applications.hackathons.stats;
+    final overview = controller.agent.applications.hackathons;
+    final mailStats = overview.stats;
     return _StandardPage(
       eyebrow: 'Opportunity tracker',
       title: 'Hackathon corner',
       subtitle: controller.agent.connected
-          ? '${mailStats.total} deduplicated events from the combined mail window. ${mailStats.applied} applied or building, ${mailStats.selected} selected.'
+          ? '${mailStats.total} grouped events from your latest combined mail window. ${mailStats.dueSoon} due soon and ${mailStats.selected} selected.'
           : 'Plans, deadlines, progress, and work logs from local storage.',
-      action: IconButton(
-        tooltip: 'Refresh',
-        onPressed: controller.refresh,
-        icon: const Icon(Icons.refresh),
+      action: FilledButton.icon(
+        onPressed: controller.syncIntelligence,
+        icon: const Icon(Icons.sync_rounded, size: 18),
+        label: const Text('Sync mail'),
       ),
-      child: controller.hackathons.isEmpty
-          ? const _EmptyState(
-              message:
-                  'No hackathons tracked yet. Add them from the existing collector API.',
-            )
-          : SingleChildScrollView(
+      child: Column(
+        children: [
+          _HackathonStats(stats: mailStats),
+          const SizedBox(height: 14),
+          if (overview.items.isNotEmpty)
+            SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final status in columns)
+                  for (final stage in stages)
+                    _MailHackathonColumn(
+                      label: stage.$2,
+                      items: overview.items
+                          .where(
+                            (item) => stage.$1 == 'selected'
+                                ? item.stage == 'selected' ||
+                                      item.stage == 'won'
+                                : item.stage == stage.$1,
+                          )
+                          .toList(),
+                    ),
+                ],
+              ),
+            )
+          else if (controller.hackathons.isNotEmpty)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final status in const [
+                    'watching',
+                    'applied',
+                    'building',
+                    'submitted',
+                  ])
                     _HackathonColumn(
                       status: status,
                       items: controller.hackathons
@@ -3907,6 +3949,294 @@ class HackathonsPage extends StatelessWidget {
                 ],
               ),
             ),
+          if (overview.items.isEmpty && controller.hackathons.isEmpty)
+            const _EmptyState(
+              message:
+                  'No hackathon mail found yet. Connect Gmail in AiOS, then press Sync mail.',
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HackathonStats extends StatelessWidget {
+  const _HackathonStats({required this.stats});
+  final HackathonMailStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = [
+      ('Tracked', stats.total, Icons.emoji_events_outlined),
+      ('Applied+', stats.applied, Icons.send_outlined),
+      ('Building', stats.building, Icons.code_rounded),
+      ('Selected', stats.selected, Icons.workspace_premium_outlined),
+      ('Due soon', stats.dueSoon, Icons.timer_outlined),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth < 620
+            ? (constraints.maxWidth - 8) / 2
+            : (constraints.maxWidth - 32) / 5;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final item in values)
+              Container(
+                width: width,
+                constraints: const BoxConstraints(minWidth: 120),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: Row(
+                  children: [
+                    Icon(item.$3, size: 18),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        item.$1,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${item.$2}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MailHackathonColumn extends StatelessWidget {
+  const _MailHackathonColumn({required this.label, required this.items});
+  final String label;
+  final List<HackathonMailItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 300,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: colors.primaryContainer,
+                foregroundColor: colors.onPrimaryContainer,
+                child: Text(
+                  '${items.length}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 22),
+              child: Center(
+                child: Text('No items', style: TextStyle(color: Colors.grey)),
+              ),
+            ),
+          for (final item in items) _MailHackathonCard(item: item),
+        ],
+      ),
+    );
+  }
+}
+
+class _MailHackathonCard extends StatelessWidget {
+  const _MailHackathonCard({required this.item});
+  final HackathonMailItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final urgent =
+        item.daysLeft != null && item.daysLeft! >= 0 && item.daysLeft! <= 7;
+    final deadlineLabel = item.daysLeft == null
+        ? 'No deadline found'
+        : item.daysLeft! < 0
+        ? '${item.daysLeft!.abs()} days overdue'
+        : item.daysLeft == 0
+        ? 'Due today'
+        : '${item.daysLeft} days left';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  item.stage == 'won'
+                      ? Icons.workspace_premium_rounded
+                      : item.stage == 'selected'
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
+                  size: 18,
+                  color: item.stage == 'won' || item.stage == 'selected'
+                      ? const Color(0xFF3C7A57)
+                      : colors.outline,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _HackathonTag(
+                  icon: urgent ? Icons.timer_rounded : Icons.event_outlined,
+                  label: deadlineLabel,
+                  emphasized: urgent,
+                ),
+                _HackathonTag(
+                  icon: Icons.mail_outline,
+                  label:
+                      '${item.mailCount} mail${item.mailCount == 1 ? '' : 's'}',
+                ),
+                if (item.platforms.isNotEmpty)
+                  _HackathonTag(
+                    icon: Icons.public_outlined,
+                    label: item.platforms.first,
+                  ),
+              ],
+            ),
+            if (item.summary.isNotEmpty) ...[
+              const SizedBox(height: 11),
+              Text(
+                item.summary,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 11,
+                  height: 1.42,
+                ),
+              ),
+            ],
+            if (item.sourceAccounts.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    Icons.account_circle_outlined,
+                    size: 14,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      item.sourceAccounts.join(', '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HackathonTag extends StatelessWidget {
+  const _HackathonTag({
+    required this.icon,
+    required this.label,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: emphasized
+            ? AppColors.yellow.withValues(alpha: 0.32)
+            : colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -4251,6 +4581,7 @@ class _AgentConnectionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final connected = agent.connected;
     final stale = agent.stale;
+    final colors = Theme.of(context).colorScheme;
     final tone = stale
         ? AppColors.peach
         : connected
@@ -4264,7 +4595,7 @@ class _AgentConnectionBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: tone.withValues(alpha: connected ? 0.22 : 0.12),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Row(
         children: [
@@ -4317,7 +4648,7 @@ class _AgentConnectionBanner extends StatelessWidget {
                 size: 14,
               ),
               label: Text(stale ? 'Saved locally' : 'Live loopback'),
-              backgroundColor: Colors.white.withValues(alpha: 0.52),
+              backgroundColor: colors.surfaceContainerHighest,
             ),
         ],
       ),

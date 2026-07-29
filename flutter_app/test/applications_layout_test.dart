@@ -56,6 +56,33 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  for (final theme in [AppTheme.light, AppTheme.dark]) {
+    testWidgets('hackathon intelligence fits in both themes', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = AppController()
+        ..loading = false
+        ..collectorOnline = true
+        ..agent = _snapshot();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(body: HackathonsPage(controller: controller)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hackathon corner'), findsOneWidget);
+      expect(find.text('PromptWars'), findsOneWidget);
+      expect(find.text('2 days left'), findsOneWidget);
+      expect(find.text('hackathons@example.com'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
 
 AgentDesktopSnapshot _snapshot() {
@@ -169,6 +196,33 @@ AgentDesktopSnapshot _snapshot() {
       ],
       'today': <Map<String, dynamic>>[],
       'due_soon': <Map<String, dynamic>>[],
+      'hackathons': {
+        'stats': {
+          'total': 1,
+          'discovered': 0,
+          'applied': 1,
+          'building': 1,
+          'submitted': 0,
+          'selected': 0,
+          'won': 0,
+          'due_soon': 1,
+        },
+        'items': <Map<String, dynamic>>[
+          {
+            'id': 'promptwars',
+            'title': 'PromptWars',
+            'stage': 'building',
+            'stage_label': 'Building',
+            'platforms': ['Hack2Skill'],
+            'source_accounts': ['hackathons@example.com'],
+            'mail_count': 4,
+            'deadline': '2026-07-31T23:59:00',
+            'days_left': 2,
+            'latest_activity_at': '2026-07-29T08:00:00',
+            'summary': 'Two days remain to finish and submit the build.',
+          },
+        ],
+      },
       'updated_at': '2026-07-18T09:00:00',
     },
   );

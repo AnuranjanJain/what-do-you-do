@@ -241,7 +241,21 @@ void main() {
                 'submitted': 1,
                 'won': 0,
               },
-              'items': <Map<String, dynamic>>[],
+              'items': [
+                {
+                  'id': 'promptwars',
+                  'title': 'PromptWars',
+                  'stage': 'building',
+                  'stage_label': 'Building',
+                  'platforms': ['Hack2Skill'],
+                  'source_accounts': ['hackathons@example.com'],
+                  'mail_count': 4,
+                  'deadline': '2026-07-31T23:59:00',
+                  'days_left': 2,
+                  'latest_activity_at': '2026-07-29T08:00:00',
+                  'summary': 'Two days remain to finish and submit the build.',
+                },
+              ],
             },
             'active': [
               {
@@ -293,6 +307,12 @@ void main() {
       expect(snapshot.applications.active.first.mailCount, 3);
       expect(snapshot.applications.hackathons.stats.total, 3);
       expect(snapshot.applications.hackathons.stats.selected, 1);
+      expect(snapshot.applications.hackathons.items.single.title, 'PromptWars');
+      expect(snapshot.applications.hackathons.items.single.daysLeft, 2);
+      expect(
+        snapshot.applications.hackathons.items.single.sourceAccounts.single,
+        'hackathons@example.com',
+      );
       expect(
         snapshot.applications.active.first.sourceEmail?.accountEmail,
         'jobs@example.com',

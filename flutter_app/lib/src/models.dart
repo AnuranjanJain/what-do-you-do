@@ -314,20 +314,70 @@ class MailCategoryStat {
 }
 
 class HackathonMailOverview {
-  const HackathonMailOverview({required this.stats});
+  const HackathonMailOverview({required this.stats, required this.items});
 
   const HackathonMailOverview.empty()
-    : stats = const HackathonMailStats.empty();
+    : stats = const HackathonMailStats.empty(),
+      items = const [];
 
   factory HackathonMailOverview.fromJson(Map<String, dynamic> json) {
     return HackathonMailOverview(
       stats: HackathonMailStats.fromJson(
         json['stats'] as Map<String, dynamic>? ?? const {},
       ),
+      items: (json['items'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(HackathonMailItem.fromJson)
+          .toList(),
     );
   }
 
   final HackathonMailStats stats;
+  final List<HackathonMailItem> items;
+}
+
+class HackathonMailItem {
+  const HackathonMailItem({
+    required this.id,
+    required this.title,
+    required this.stage,
+    required this.stageLabel,
+    required this.platforms,
+    required this.sourceAccounts,
+    required this.mailCount,
+    required this.deadline,
+    required this.daysLeft,
+    required this.latestActivityAt,
+    required this.summary,
+  });
+
+  factory HackathonMailItem.fromJson(Map<String, dynamic> json) {
+    return HackathonMailItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Hackathon update',
+      stage: json['stage']?.toString() ?? 'discovered',
+      stageLabel: json['stage_label']?.toString() ?? 'Discovered',
+      platforms: _stringList(json['platforms']),
+      sourceAccounts: _stringList(json['source_accounts']),
+      mailCount: (json['mail_count'] as num?)?.toInt() ?? 0,
+      deadline: json['deadline']?.toString() ?? '',
+      daysLeft: (json['days_left'] as num?)?.toInt(),
+      latestActivityAt: json['latest_activity_at']?.toString() ?? '',
+      summary: json['summary']?.toString() ?? '',
+    );
+  }
+
+  final String id;
+  final String title;
+  final String stage;
+  final String stageLabel;
+  final List<String> platforms;
+  final List<String> sourceAccounts;
+  final int mailCount;
+  final String deadline;
+  final int? daysLeft;
+  final String latestActivityAt;
+  final String summary;
 }
 
 class HackathonMailStats {
@@ -892,7 +942,7 @@ class CollegeWorkSnapshot {
     : date = '',
       status = 'not_connected',
       hasClassToday = false,
-      headline = 'No PAT mail has been detected yet',
+      headline = 'No college mail or event has been detected yet',
       time = '',
       location = '',
       bring = const [],
@@ -906,8 +956,9 @@ class CollegeWorkSnapshot {
     return CollegeWorkSnapshot(
       date: json['date']?.toString() ?? '',
       status: json['status']?.toString() ?? 'not_connected',
-      hasClassToday: json['has_class_today'] == true,
-      headline: json['headline']?.toString() ?? 'PAT status unavailable',
+      hasClassToday:
+          json['has_event_today'] == true || json['has_class_today'] == true,
+      headline: json['headline']?.toString() ?? 'College status unavailable',
       time: json['time']?.toString() ?? '',
       location: json['location']?.toString() ?? '',
       bring: _stringList(json['bring']),
