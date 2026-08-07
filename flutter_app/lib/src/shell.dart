@@ -5168,7 +5168,7 @@ Color _eventColor(String type) {
 String _shortDate(String value) {
   final parsed = DateTime.tryParse(value);
   if (parsed == null) return value;
-  return DateFormat('MMM d, h:mm a').format(parsed);
+  return DateFormat('MMM d, h:mm a').format(parsed.toLocal());
 }
 
 String _formatDraftDate(DateTime value) {
