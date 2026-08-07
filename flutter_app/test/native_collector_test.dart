@@ -73,4 +73,35 @@ void main() {
     expect(response.sessions.single.category.name, 'idle');
     expect(response.sessions.single.subcategory, 'Away from keyboard');
   });
+
+  test('native collector quarantines corrupt daily storage and recovers', () async {
+    final temp = await Directory.systemTemp.createTemp('wdyd-native-recovery-');
+    addTearDown(() => temp.delete(recursive: true));
+    final date = DateTime.now().toIso8601String().substring(0, 10);
+    final sessionsDirectory = Directory('${temp.path}\\activity-sessions');
+    await sessionsDirectory.create(recursive: true);
+    final target = File('${sessionsDirectory.path}\\$date.json');
+    await target.writeAsString('{"version":2,"sessions":"broken"}');
+    final collector = NativeCollectorApi(
+      dataDirectory: temp,
+      pollInterval: const Duration(days: 1),
+      snapshotReader: () async => {
+        'processName': 'Code',
+        'foregroundWindowTitle': 'Recovery test',
+        'idleMs': 0,
+      },
+    );
+    addTearDown(collector.stop);
+
+    await collector.start();
+    final response = await collector.sessions(date);
+    final quarantined = await sessionsDirectory
+        .list()
+        .where((entry) => entry.path.contains('.corrupt-'))
+        .toList();
+
+    expect(response.sessions, isNotEmpty);
+    expect(await target.exists(), isTrue);
+    expect(quarantined, hasLength(1));
+  });
 }

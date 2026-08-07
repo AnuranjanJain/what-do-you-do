@@ -225,23 +225,45 @@ class NativeCollectorApi extends CollectorApi {
   }
 
   Future<_StoredSessions> _readSessionsForDate(String dateKey) async {
+    final file = File('${_sessionsDirectory.path}\\$dateKey.json');
     try {
-      final decoded =
-          jsonDecode(
-                await File(
-                  '${_sessionsDirectory.path}\\$dateKey.json',
-                ).readAsString(),
-              )
-              as Map<String, dynamic>;
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map<String, dynamic> ||
+          decoded['version'] != 3 ||
+          decoded['date'] != dateKey ||
+          decoded['sessions'] is! List<dynamic>) {
+        throw const FormatException('Unsupported activity session file.');
+      }
+      final current = decoded['currentSession'];
+      if (current != null && current is! Map<String, dynamic>) {
+        throw const FormatException('Invalid active activity session.');
+      }
+      final closed = <Map<String, dynamic>>[];
+      for (final item in decoded['sessions'] as List<dynamic>) {
+        if (item is! Map<String, dynamic>) {
+          throw const FormatException('Invalid closed activity session.');
+        }
+        closed.add(item);
+      }
       return _StoredSessions(
-        decoded['currentSession'] as Map<String, dynamic>?,
-        (decoded['sessions'] as List<dynamic>? ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .take(_maxSessions)
-            .toList(),
+        current,
+        closed.take(_maxSessions).toList(),
       );
-    } catch (_) {
+  } catch (_) {
+      await _quarantineCorruptFile(file);
       return const _StoredSessions(null, []);
+    }
+  }
+
+  Future<void> _quarantineCorruptFile(File file) async {
+    if (!await file.exists()) return;
+    final quarantine = File(
+      '${file.path}.corrupt-${DateTime.now().microsecondsSinceEpoch}',
+    );
+    try {
+      await file.rename(quarantine.path);
+    } catch (_) {
+      // A locked or concurrently replaced file must not stop collection.
     }
   }
 
