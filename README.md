@@ -87,7 +87,7 @@ The output is a ZIP containing the Flutter DLL/data payload, installer,
 uninstaller, `release-manifest.json`, and SHA-256 checksums. Install it with:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\dist\windows\What-Do-You-Do-Windows-v1.0.1\Install-WhatDoYouDo.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\dist\windows\What-Do-You-Do-Windows-v1.0.2\Install-WhatDoYouDo.ps1
 ```
 
 For a direct development install from a local Flutter build:

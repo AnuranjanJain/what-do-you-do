@@ -4,7 +4,12 @@ $packageAppDir = Join-Path $PSScriptRoot "app"
 $exeName = "what_do_you_do.exe"
 $sourceExe = Join-Path $packageAppDir $exeName
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\What Do You Do"
-$appVersion = "1.0.1"
+$manifestPath = Join-Path $PSScriptRoot "release-manifest.json"
+$appVersion = if (Test-Path -LiteralPath $manifestPath) {
+  [string]((Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json).version)
+} else {
+  "1.0.2"
+}
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "What Do You Do.lnk"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $startMenuShortcut = Join-Path $startMenuDir "What Do You Do.lnk"

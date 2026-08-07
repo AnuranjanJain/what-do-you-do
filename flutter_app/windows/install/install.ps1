@@ -6,7 +6,12 @@ $releaseDir = Join-Path $repoRoot "build\windows\x64\runner\Release"
 $exeName = "what_do_you_do.exe"
 $sourceExe = Join-Path $releaseDir $exeName
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\What Do You Do"
-$appVersion = "1.0.1"
+$releaseMetadataPath = Join-Path $workspaceRoot "release.json"
+$appVersion = if (Test-Path -LiteralPath $releaseMetadataPath) {
+  [string]((Get-Content -LiteralPath $releaseMetadataPath -Raw | ConvertFrom-Json).windows_version)
+} else {
+  "1.0.2"
+}
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "What Do You Do.lnk"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $startMenuShortcut = Join-Path $startMenuDir "What Do You Do.lnk"

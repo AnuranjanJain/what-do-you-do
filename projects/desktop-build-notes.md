@@ -75,7 +75,7 @@ executable requires the adjacent Flutter DLL and data directory.
 Recommended asset name:
 
 ```text
-What-Do-You-Do-Windows-v1.0.1.zip
+What-Do-You-Do-Windows-v1.0.2.zip
 ```
 
 Release ZIP layout:

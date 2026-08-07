@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $flutterApp = Join-Path $repoRoot 'flutter_app'
+$releaseMetadataPath = Join-Path $repoRoot 'release.json'
 $pubspecPath = Join-Path $flutterApp 'pubspec.yaml'
 $installScript = Join-Path $flutterApp 'windows\install\install-release.ps1'
 $uninstallScript = Join-Path $flutterApp 'windows\install\uninstall.ps1'
@@ -23,13 +24,13 @@ if (-not (Test-Path -LiteralPath $Flutter)) {
 
 $pubspec = Get-Content -LiteralPath $pubspecPath -Raw
 if ([string]::IsNullOrWhiteSpace($Version)) {
-  $versionMatch = [regex]::Match($pubspec, '(?m)^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)\s*$')
-  if (-not $versionMatch.Success) {
-    throw 'Could not read version from flutter_app/pubspec.yaml.'
+  if (-not (Test-Path -LiteralPath $releaseMetadataPath)) {
+    throw "Release metadata not found: $releaseMetadataPath"
   }
-  $Version = $versionMatch.Groups[1].Value
+  $releaseMetadata = Get-Content -LiteralPath $releaseMetadataPath -Raw | ConvertFrom-Json
+  $Version = [string]$releaseMetadata.windows_version
   if ($BuildNumber -eq 0) {
-    $BuildNumber = [int]$versionMatch.Groups[2].Value
+    $BuildNumber = [int]$releaseMetadata.windows_build
   }
 }
 if ($BuildNumber -le 0) {
@@ -37,6 +38,10 @@ if ($BuildNumber -le 0) {
 }
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
   throw "Version must use x.y.z format: $Version"
+}
+$pubspecMatch = [regex]::Match($pubspec, '(?m)^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)\s*$')
+if ($pubspecMatch.Success -and ($pubspecMatch.Groups[1].Value -ne $Version -or [int]$pubspecMatch.Groups[2].Value -ne $BuildNumber)) {
+  throw "release.json and flutter_app/pubspec.yaml versions differ."
 }
 
 $outputRoot = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
