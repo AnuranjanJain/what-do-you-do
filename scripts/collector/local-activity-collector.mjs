@@ -1,8 +1,9 @@
 import { createServer } from "node:http";
 import { execFile } from "node:child_process";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,6 +16,7 @@ const sessionsDir = join(dataDir, "activity-sessions");
 const legacySessionStorePath = join(dataDir, "activity-sessions.json");
 const aiosSyncStatePath = join(dataDir, "aios-sync-state.json");
 const hackathonsStorePath = join(dataDir, "hackathons.json");
+const collectorTokenPath = join(dataDir, "collector-token");
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.WDYD_COLLECTOR_PORT ?? "17321", 10);
 const pollMs = Number.parseInt(process.env.WDYD_COLLECTOR_POLL_MS ?? "2500", 10);
@@ -31,6 +33,13 @@ const allowedBrowserOrigins = [
   /^https?:\/\/tauri\.localhost$/i,
   /^tauri:\/\/localhost$/i,
 ];
+const collectorBootstrapOrigins = new Set([
+  "http://127.0.0.1:5173",
+  "http://localhost:5173",
+  "http://tauri.localhost",
+  "https://tauri.localhost",
+  "tauri://localhost",
+]);
 
 let latestSnapshot = null;
 let currentSession = null;
@@ -46,14 +55,49 @@ let aiosSyncState = {
   totalSynced: 0,
 };
 let persistenceReady = false;
+let collectorApiToken = "";
+let captureInFlight = false;
+const writeLocks = new Map();
 
 async function bootstrapStorage() {
   await mkdir(sessionsDir, { recursive: true });
+  await ensureCollectorApiToken();
   await migrateLegacyStore();
   await loadActiveDate(activeDateKey);
   await loadAiosSyncState();
   await discoverAiosRuntime();
   persistenceReady = true;
+}
+
+async function ensureCollectorApiToken() {
+  collectorApiToken = String(process.env.WDYD_COLLECTOR_TOKEN ?? "").trim();
+  if (!collectorApiToken) {
+    try {
+      collectorApiToken = (await readFile(collectorTokenPath, "utf-8")).trim();
+    } catch {
+      collectorApiToken = randomBytes(32).toString("hex");
+      await writeFileAtomically(collectorTokenPath, `${collectorApiToken}\n`);
+    }
+  }
+
+  if (collectorApiToken.length < 32) {
+    throw new Error("WDYD collector token must contain at least 32 characters.");
+  }
+}
+
+async function writeFileAtomically(filePath, contents) {
+  const previous = writeLocks.get(filePath) ?? Promise.resolve();
+  const next = previous.catch(() => {}).then(async () => {
+    const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(temporaryPath, contents, "utf-8");
+    await rename(temporaryPath, filePath);
+  });
+  writeLocks.set(filePath, next);
+  try {
+    await next;
+  } finally {
+    if (writeLocks.get(filePath) === next) writeLocks.delete(filePath);
+  }
 }
 
 async function discoverAiosRuntime() {
@@ -84,25 +128,8 @@ async function discoverAiosRuntime() {
     }
   }
 
-  for (let port = 5050; port <= 5069; port += 1) {
-    try {
-      const baseUrl = `http://127.0.0.1:${port}`;
-      const response = await fetch(`${baseUrl}/api/local/pairing`, {
-        headers: { "User-Agent": "what-do-you-do-collector" },
-        signal: AbortSignal.timeout(250),
-      });
-      if (!response.ok) continue;
-      const runtime = await response.json();
-      if (runtime.service !== "aios-assistant" || !runtime.api_token) continue;
-      aiosBaseUrl = normalizeLoopbackBaseUrl(runtime.base_url ?? baseUrl);
-      aiosApiToken = String(runtime.api_token);
-      aiosSyncEnabled = true;
-      aiosSyncState.enabled = true;
-      return;
-    } catch {
-      // Try the next local AiOS desktop port.
-    }
-  }
+  // Pairing is an explicit user-approved flow now. Do not probe the
+  // metadata endpoint looking for a bearer token.
 }
 
 async function migrateLegacyStore() {
@@ -131,7 +158,7 @@ async function migrateLegacyStore() {
         ? legacy.sessions.map((session) => addDateKey(session, activeDateKey)).slice(0, maxSessions)
         : [],
     );
-    await writeFile(todayPath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+    await writeFileAtomically(todayPath, `${JSON.stringify(payload, null, 2)}\n`);
   } catch {
     // Fresh machine or no legacy data. Nothing to migrate.
   }
@@ -252,10 +279,9 @@ async function persistActiveDate() {
 
 async function persistDate(dateKey, currentSessionForDate, sessionsForDate) {
   await mkdir(sessionsDir, { recursive: true });
-  await writeFile(
+  await writeFileAtomically(
     sessionPathForDate(dateKey),
     `${JSON.stringify(buildPayload(dateKey, currentSessionForDate, sessionsForDate), null, 2)}\n`,
-    "utf-8",
   );
 }
 
@@ -270,10 +296,9 @@ async function readHackathons() {
 
 async function persistHackathons(hackathons) {
   await mkdir(dataDir, { recursive: true });
-  await writeFile(
+  await writeFileAtomically(
     hackathonsStorePath,
     `${JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), hackathons }, null, 2)}\n`,
-    "utf-8",
   );
 }
 
@@ -437,10 +462,9 @@ async function loadAiosSyncState() {
 
 async function persistAiosSyncState() {
   await mkdir(dataDir, { recursive: true });
-  await writeFile(
+  await writeFileAtomically(
     aiosSyncStatePath,
     `${JSON.stringify({ ...aiosSyncState, enabled: aiosSyncEnabled }, null, 2)}\n`,
-    "utf-8",
   );
 }
 
@@ -513,17 +537,19 @@ function mapCategoryForAios(category) {
 }
 
 function runPowerShellSnapshot() {
+  if (captureInFlight) return;
+  captureInFlight = true;
   execFile(
     "powershell.exe",
     ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", snapshotScript],
     { windowsHide: true, timeout: 5000 },
     async (error, stdout, stderr) => {
-      if (error) {
-        lastError = stderr?.trim() || error.message;
-        return;
-      }
-
       try {
+        if (error) {
+          lastError = stderr?.trim() || error.message;
+          return;
+        }
+
         const rawSnapshot = JSON.parse(stdout.trim());
         const snapshot = normalizeSnapshot(rawSnapshot);
         latestSnapshot = snapshot;
@@ -532,6 +558,8 @@ function runPowerShellSnapshot() {
         await persistActiveDate();
       } catch (parseError) {
         lastError = parseError instanceof Error ? parseError.message : "Unable to parse snapshot";
+      } finally {
+        captureInFlight = false;
       }
     },
   );
@@ -598,7 +626,7 @@ async function updateSessions(snapshot) {
       appName: snapshot.appName,
       category: snapshot.category,
       subcategory: snapshot.subcategory,
-      durationMinutes: 1,
+      durationMinutes: 0,
       confidence: snapshot.confidence,
       signalSources: snapshot.idle ? ["idle-detector"] : ["active-app"],
       rawContentStored: false,
@@ -814,7 +842,7 @@ async function listAvailableDates() {
 function jsonResponse(response, statusCode, body) {
   response.writeHead(statusCode, {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-WDYD-Token",
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
@@ -836,22 +864,40 @@ const server = createServer(async (request, response) => {
     response.setHeader("Vary", "Origin");
   }
 
+  const requestUrl = new URL(request.url ?? "/", `http://${host}:${port}`);
+
   if (request.method === "OPTIONS") {
     jsonResponse(response, 204, {});
     return;
   }
 
-  const requestUrl = new URL(request.url ?? "/", `http://${host}:${port}`);
+  if (requestUrl.pathname === "/auth/token" && request.method === "GET") {
+    if (!allowedOrigin || !isCollectorBootstrapOrigin(requestOrigin)) {
+      jsonResponse(response, 403, { ok: false, error: "A trusted browser origin is required." });
+      return;
+    }
+    jsonResponse(response, 200, { ok: true, token: collectorApiToken });
+    return;
+  }
+
+  if (!hasValidCollectorToken(request)) {
+    jsonResponse(response, 401, {
+      ok: false,
+      error: "Collector authentication is required. Refresh the local dashboard to pair it.",
+    });
+    return;
+  }
 
   if (requestUrl.pathname === "/health") {
     jsonResponse(response, 200, {
-      ok: true,
+      ok: Boolean(latestSnapshot) && !lastError,
       service: "what-do-you-do-local-collector",
       activeDateKey,
       latestCapturedAt: latestSnapshot?.capturedAt ?? null,
       persistenceReady,
       storage: "local-daily-json",
       lastError,
+      collectorOnline: Boolean(latestSnapshot) && !lastError,
       aiosSync: {
         enabled: aiosSyncEnabled,
         lastError: aiosSyncState.lastError,
@@ -1001,19 +1047,32 @@ server.requestTimeout = 10_000;
 server.headersTimeout = 12_000;
 server.maxHeadersCount = 64;
 
+await bootstrapStorage();
 server.listen(port, host, () => {
   console.log(`What Do You Do collector listening on http://${host}:${port}`);
   console.log("Collecting active app, window title summary, and idle state locally.");
   console.log(`Daily session files: ${sessionsDir}`);
 });
-
-await bootstrapStorage();
 runPowerShellSnapshot();
 setInterval(runPowerShellSnapshot, pollMs);
 
 function getAllowedBrowserOrigin(origin) {
   if (!origin) return "";
   return allowedBrowserOrigins.some((pattern) => pattern.test(origin)) ? origin : "";
+}
+
+function isCollectorBootstrapOrigin(origin) {
+  const configuredOrigin = String(process.env.WDYD_WEB_ORIGIN ?? "").trim().replace(/\/$/, "");
+  return collectorBootstrapOrigins.has(origin) || (configuredOrigin && configuredOrigin === origin);
+}
+
+function hasValidCollectorToken(request) {
+  const authorization = String(request.headers.authorization ?? "");
+  const supplied = authorization.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length).trim()
+    : String(request.headers["x-wdyd-token"] ?? "").trim();
+  if (!supplied || supplied.length !== collectorApiToken.length) return false;
+  return timingSafeEqual(Buffer.from(supplied), Buffer.from(collectorApiToken));
 }
 
 function normalizeLoopbackBaseUrl(value) {

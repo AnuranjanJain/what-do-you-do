@@ -82,7 +82,13 @@ class AppController extends ChangeNotifier {
 
     final agentFuture = _loadAgentSnapshot();
     try {
-      await _api.health();
+      final collectorHealth = await _api.health();
+      if (collectorHealth['ok'] != true) {
+        throw StateError(
+          collectorHealth['lastError']?.toString() ??
+              'Collector is online but has not produced a valid activity snapshot.',
+        );
+      }
       final response = await _api.sessions(selectedDate);
       List<Hackathon> loadedHackathons = hackathons;
       try {

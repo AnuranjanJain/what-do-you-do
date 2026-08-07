@@ -44,7 +44,6 @@ import {
   formatMinutes,
   offsetDateKey,
   privacyPermissions,
-  simulateTodayActivity,
   todayDateKey,
 } from "./domain/activity";
 import {
@@ -119,14 +118,6 @@ const agentFeatures = [
   { name: "Job tracking", unlockedStatus: "Ready through AI Agent", icon: BriefcaseBusiness },
 ];
 
-const projectAiAgent = {
-  cwd: "C:\\Users\\anura\\Documents\\Ai Agent",
-  localUrl: "http://127.0.0.1:5000/",
-  threadId: "019e4a40-fd50-7f92-b46e-1a1548dfdd94",
-  threadTitle: "Build AI agent like ChatGPT",
-  threadUrl: "codex://threads/019e4a40-fd50-7f92-b46e-1a1548dfdd94",
-};
-
 const categoryOptions: ActivityCategory[] = [
   "coding",
   "browsing",
@@ -147,7 +138,7 @@ function App() {
   const [theme, setTheme] = useState<"light" | "dark">(
     () => (window.localStorage.getItem("wdyd.theme") as "light" | "dark" | null) ?? "light",
   );
-  const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>("simulator");
+  const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>("offline");
   const [selectedDate, setSelectedDate] = useState(() => todayDateKey());
   const [activeDateKey, setActiveDateKey] = useState(() => todayDateKey());
   const [availableDates, setAvailableDates] = useState<string[]>([]);
@@ -184,7 +175,7 @@ function App() {
   const [placementRefreshing, setPlacementRefreshing] = useState(false);
   const [hackathonFormOpen, setHackathonFormOpen] = useState(false);
   const [editingHackathon, setEditingHackathon] = useState<Hackathon | null>(null);
-  const [sessions, setSessions] = useState<ActivitySession[]>(() => simulateTodayActivity());
+  const [sessions, setSessions] = useState<ActivitySession[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -204,10 +195,10 @@ function App() {
         }
       } catch {
         if (!cancelled) {
-          setSessions(simulateTodayActivity());
+          setSessions([]);
           setActiveDateKey(todayDateKey());
           setAvailableDates([]);
-          setCollectorStatus("simulator");
+          setCollectorStatus("offline");
         }
       }
     }
@@ -706,7 +697,7 @@ function App() {
                 ? "Live desktop collector"
                 : collectorStatus === "history"
                   ? "Daily history"
-                  : "Simulator fallback"}
+                  : "Collector offline"}
             </p>
             <h1>Welcome back.</h1>
             <p>
@@ -714,7 +705,7 @@ function App() {
                 ? "Your day is classified locally, in real time."
                 : collectorStatus === "history"
                   ? `Showing persisted local sessions for ${selectedDate}.`
-                  : "Start the collector to replace simulated sessions."}
+                   : "Start the local collector to load real activity. No synthetic sessions are shown."}
             </p>
             <div className="hero-progress-strip" aria-label="Daily activity summary">
               <span className="dark">{formatMinutes(summary.totalMinutes)}</span>
@@ -1078,18 +1069,18 @@ function App() {
 
             <div className="agent-identity">
               <div>
-                <span>Trusted thread</span>
-                <strong>{projectAiAgent.threadId}</strong>
-                <small>{projectAiAgent.threadTitle}</small>
+                <span>Local companion</span>
+                <strong>{agentStatus === "connected" ? "AiOS Assistant connected" : "Connection not verified"}</strong>
+                <small>Only approved activity summaries are shared over loopback.</small>
               </div>
-              <a href={projectAiAgent.threadUrl}>Open thread</a>
+              <span className="source-health">{agentLive?.updatedAt ? `Updated ${new Date(agentLive.updatedAt).toLocaleTimeString()}` : "No live heartbeat"}</span>
             </div>
 
             <div className="agent-links">
               <a href={agentBaseUrl} target="_blank" rel="noreferrer">
                 Local app
               </a>
-              <span>{projectAiAgent.cwd}</span>
+              <span>Runtime discovered locally</span>
             </div>
 
             <div className="agent-bridge-controls">
@@ -1209,11 +1200,11 @@ function App() {
                   </div>
                   <div className="widget-preview compact">
                     <span>Data source</span>
-                    <strong>{collectorStatus === "live" ? "Live collector" : "Simulator connected"}</strong>
+                    <strong>{collectorStatus === "live" ? "Live collector" : "Real data only"}</strong>
                     <small>
                       {collectorStatus === "live"
                         ? "Windows app and idle signals"
-                        : "Run npm run collector:dev"}
+                        : "Run the local collector to begin tracking"}
                     </small>
                   </div>
                 </>

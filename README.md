@@ -121,8 +121,7 @@ The Windows app collects activity in-process through Win32 APIs and persists
 daily JSON under `%LOCALAPPDATA%\What Do You Do\data`. It does not start Node,
 PowerShell polling, Vite, or a WDYD HTTP server.
 
-The Windows client reads `%LOCALAPPDATA%\AiOS Assistant\runtime.json` first, then
-falls back to parallel loopback discovery. A healthy connection uses one
+The Windows client reads `%LOCALAPPDATA%\AiOS Assistant\runtime.json` first. A healthy connection uses one
 versioned snapshot request instead of polling every feature separately.
 
 ```text
@@ -138,6 +137,11 @@ project summaries stay visible with a clear reconnecting state. Live polling
 retries every 3 seconds while reconnecting and settles to 15 seconds when
 healthy. Raw email bodies, OAuth tokens and private credentials are never cached
 by WDYD.
+
+The Linux/browser collector stores a per-install token in the local data folder
+and requires it for every activity or hackathon request. If the collector or
+AiOS is offline, WDYD shows an empty real-data state; it never fabricates
+sessions to make the dashboard look busy.
 
 ## Privacy Promise
 

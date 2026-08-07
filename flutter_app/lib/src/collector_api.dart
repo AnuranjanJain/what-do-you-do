@@ -45,6 +45,7 @@ class NativeCollectorApi extends CollectorApi {
 
   Timer? _timer;
   bool _started = false;
+  bool _captureInFlight = false;
   bool _persistenceReady = false;
   String? _lastError;
   String _activeDateKey = _dateKey(DateTime.now());
@@ -59,10 +60,14 @@ class NativeCollectorApi extends CollectorApi {
     await _loadActiveDate(_activeDateKey);
     _persistenceReady = true;
     await captureNow();
-    _timer = Timer.periodic(pollInterval, (_) => unawaited(captureNow()));
+    _timer = Timer.periodic(pollInterval, (_) {
+      if (!_captureInFlight) unawaited(captureNow());
+    });
   }
 
   Future<void> captureNow() async {
+    if (_captureInFlight) return;
+    _captureInFlight = true;
     try {
       final raw = await _snapshotReader();
       final capturedAt = DateTime.now();
@@ -72,6 +77,8 @@ class NativeCollectorApi extends CollectorApi {
       _lastError = null;
     } catch (error) {
       _lastError = error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _captureInFlight = false;
     }
   }
 
@@ -85,12 +92,13 @@ class NativeCollectorApi extends CollectorApi {
   Future<Map<String, dynamic>> health() async {
     await start();
     return {
-      'ok': true,
+      'ok': _lastError == null,
       'service': 'what-do-you-do-native-collector',
       'activeDateKey': _activeDateKey,
       'persistenceReady': _persistenceReady,
       'storage': 'local-daily-json',
       'lastError': _lastError,
+      'collectorOnline': _lastError == null,
       'runtime': 'in-process-dart',
     };
   }
@@ -168,7 +176,7 @@ class NativeCollectorApi extends CollectorApi {
         'appName': snapshot['appName'],
         'category': snapshot['category'],
         'subcategory': snapshot['subcategory'],
-        'durationMinutes': 1,
+        'durationMinutes': 0,
         'confidence': snapshot['confidence'],
         'signalSources': snapshot['idle'] == true
             ? ['idle-detector']
@@ -261,9 +269,14 @@ class NativeCollectorApi extends CollectorApi {
         'storesRawWindowTitles': false,
       },
     };
-    await File(
-      '${_sessionsDirectory.path}\\$dateKey.json',
-    ).writeAsString('${const JsonEncoder.withIndent('  ').convert(payload)}\n');
+    final target = File('${_sessionsDirectory.path}\\$dateKey.json');
+    final temporary = File(
+      '${target.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
+    );
+    await temporary.writeAsString(
+      '${const JsonEncoder.withIndent('  ').convert(payload)}\n',
+    );
+    await temporary.rename(target.path);
   }
 
   Future<List<String>> _availableDates() async {
