@@ -1,0 +1,70 @@
+name: What Do You Do quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run build
+      - run: node --check scripts/collector/local-activity-collector.mjs
+
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.0'
+          cache: true
+      - run: flutter pub get
+        working-directory: flutter_app
+      - run: flutter analyze
+        working-directory: flutter_app
+      - run: flutter test
+        working-directory: flutter_app
+
+  windows-native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.0'
+          cache: true
+      - run: flutter analyze
+        working-directory: flutter_app
+      - run: flutter test
+        working-directory: flutter_app
+      - run: >-
+          powershell.exe -NoProfile -ExecutionPolicy Bypass
+          -File .\scripts\build-windows-release.ps1
+          -Flutter "$env:FLUTTER_ROOT\bin\flutter.bat"
+      - run: >-
+          powershell.exe -NoProfile -ExecutionPolicy Bypass
+          -File .\scripts\smoke-windows-release.ps1
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy
+      - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings

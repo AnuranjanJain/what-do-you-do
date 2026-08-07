@@ -36,11 +36,11 @@ Install for Windows Search / Start Menu:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\install\install.ps1
 ```
 
-The installer copies the local collector into the app install directory and
-adds `start-collector.ps1`. The Settings screen can create Windows Startup
-shortcuts for the app and for this hidden collector launcher. The Windows app
-also keeps a tray icon: closing or minimizing hides the window, and Settings
-contains the explicit app exit action.
+The installer copies the complete Flutter release directory. The Windows app
+collects activity in-process, so one optional Windows Startup shortcut is enough
+to start both the dashboard and its collector. The app also keeps a tray icon:
+closing or minimizing hides the window, and Settings contains the explicit app
+exit action.
 
 The complete release folder is:
 

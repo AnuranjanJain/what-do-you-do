@@ -32,7 +32,7 @@ export type ActivitySession = {
   notedAt?: string;
 };
 
-export type CollectorStatus = "live" | "history" | "simulator";
+export type CollectorStatus = "live" | "history" | "offline";
 
 export type CollectorSession = ActivitySession & {
   fingerprint?: string;

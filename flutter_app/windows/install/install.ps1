@@ -6,7 +6,12 @@ $releaseDir = Join-Path $repoRoot "build\windows\x64\runner\Release"
 $exeName = "what_do_you_do.exe"
 $sourceExe = Join-Path $releaseDir $exeName
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\What Do You Do"
-$appVersion = "1.0.1"
+$releaseMetadataPath = Join-Path $workspaceRoot "release.json"
+$appVersion = if (Test-Path -LiteralPath $releaseMetadataPath) {
+  [string]((Get-Content -LiteralPath $releaseMetadataPath -Raw | ConvertFrom-Json).windows_version)
+} else {
+  "1.0.2"
+}
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "What Do You Do.lnk"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $startMenuShortcut = Join-Path $startMenuDir "What Do You Do.lnk"
@@ -22,10 +27,17 @@ if (-not $resolvedRelease.StartsWith($resolvedRepo, [StringComparison]::OrdinalI
   throw "Refusing to install from outside the Flutter app workspace."
 }
 
-Get-Process what_do_you_do -ErrorAction SilentlyContinue | Stop-Process -Force
-# Stop the retired Node collector during upgrades to the in-process engine.
-Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
-  Where-Object { $_.CommandLine -like "*local-activity-collector.mjs*" } |
+$managedRoots = @($sourceExe, $installDir) | ForEach-Object {
+  [System.IO.Path]::GetFullPath($_).TrimEnd('\') + '\'
+}
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object {
+    $process = $_
+    $process.Name -eq $exeName -and $process.ExecutablePath -and
+      (($managedRoots | Where-Object {
+        $process.ExecutablePath.StartsWith($_, [StringComparison]::OrdinalIgnoreCase)
+      }).Count -gt 0)
+  } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Milliseconds 500
 

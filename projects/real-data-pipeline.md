@@ -168,7 +168,8 @@ Current real data:
 - Daily session files
 - Date-aware dashboard view
 - Packaged Windows collector launcher for the installed Flutter app
-- User-controlled app and collector startup shortcuts from Settings
+- User-controlled app startup shortcut from Settings; native collection starts
+  with the app process
 - Manual and opt-in auto-sync into AiOS Assistant wellbeing events
 - Optional token-authenticated collector sync into AiOS Assistant
 - Local hackathon workflow persisted in `data/hackathons.json`

@@ -2,7 +2,7 @@
 
 ## Security Model
 
-What Do You Do is local-first. The collector binds only to `127.0.0.1`, stores activity under the local `data/` directory, and permits browser requests only from localhost or the Tauri webview.
+What Do You Do is local-first. The collector binds only to `127.0.0.1`, stores activity under the local `data/` directory, and permits browser requests only from localhost or the Tauri webview. Collector routes require a per-install bearer token; the browser obtains it only through the trusted local dashboard origin.
 
 The app does not intentionally persist:
 
@@ -19,6 +19,9 @@ Only classified session summaries are written to disk. AiOS synchronization is o
 
 - Loopback-only collector and AiOS endpoints
 - Origin validation for browser requests
+- Per-install collector token with constant-time comparison
+- No unauthenticated loopback discovery of AiOS bearer tokens
+- Atomic local JSON replacement and single-flight activity capture
 - JSON-only mutation endpoints
 - 64 KB request-body limit
 - Input length and enum validation
@@ -31,7 +34,7 @@ Only classified session summaries are written to disk. AiOS synchronization is o
 
 Activity sessions, notes, corrections, hackathon plans, and sync state are currently stored as local JSON. They are not encrypted by the application. Use an encrypted Windows account or disk and do not share the project data directory with untrusted users.
 
-Application-level encryption is planned before handling highly sensitive notes or mailbox-derived content.
+Application-level encryption is planned before handling highly sensitive notes or mailbox-derived content. The collector never falls back to synthetic activity when the real source is unavailable; offline states remain empty and explicit.
 
 ## Reporting
 

@@ -1,0 +1,7 @@
+{
+  "product": "What Do You Do",
+  "browser_version": "0.1.1",
+  "windows_version": "1.0.2",
+  "windows_build": 3,
+  "runtime": "flutter-windows-native"
+}

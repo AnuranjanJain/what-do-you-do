@@ -260,6 +260,11 @@ class AgentDesktopApi {
     );
     final rawPath = data['snapshot_path']?.toString() ?? '/api/wdyd/snapshot';
     final snapshotPath = rawPath.startsWith('/') ? rawPath : '/$rawPath';
+    if (snapshotPath != '/api/wdyd/snapshot') return null;
+    final capabilities = _map(data['capabilities']);
+    if (capabilities.isNotEmpty && capabilities['wdyd_snapshot'] != 1) {
+      return null;
+    }
     return _Pairing(baseUrl: baseUrl, token: token, snapshotPath: snapshotPath);
   }
 

@@ -36,9 +36,7 @@ class AppController extends ChangeNotifier {
   bool darkMode = false;
   bool launchAppAtLogin = false;
   bool launchAppHiddenAtLogin = false;
-  bool launchCollectorAtLogin = false;
   bool startupAvailable = false;
-  bool collectorStartupAvailable = false;
   bool loading = true;
   bool collectorOnline = false;
   String message = 'Connecting to the local collector...';
@@ -82,7 +80,13 @@ class AppController extends ChangeNotifier {
 
     final agentFuture = _loadAgentSnapshot();
     try {
-      await _api.health();
+      final collectorHealth = await _api.health();
+      if (collectorHealth['ok'] != true) {
+        throw StateError(
+          collectorHealth['lastError']?.toString() ??
+              'Collector is online but has not produced a valid activity snapshot.',
+        );
+      }
       final response = await _api.sessions(selectedDate);
       List<Hackathon> loadedHackathons = hackathons;
       try {
@@ -256,20 +260,6 @@ class AppController extends ChangeNotifier {
     await _loadStartupState();
   }
 
-  Future<void> setLaunchCollectorAtLogin(bool enabled) async {
-    launchCollectorAtLogin = enabled;
-    startupMessage = enabled
-        ? 'Enabling local collector at sign-in...'
-        : 'Disabling local collector at sign-in...';
-    notifyListeners();
-    try {
-      await _startupManager.setLaunchCollector(enabled);
-    } catch (error) {
-      startupMessage = _friendlyStartupError(error);
-    }
-    await _loadStartupState();
-  }
-
   Future<void> hideToTray() async {
     await _windowLifecycle.hideToTray();
   }
@@ -295,17 +285,13 @@ class AppController extends ChangeNotifier {
     try {
       final state = await _startupManager.load();
       startupAvailable = state.available;
-      collectorStartupAvailable = state.collectorAvailable;
       launchAppAtLogin = state.launchApp;
       launchAppHiddenAtLogin = state.launchAppHidden;
-      launchCollectorAtLogin = state.launchCollector;
       startupMessage = state.message;
     } catch (error) {
       startupAvailable = false;
-      collectorStartupAvailable = false;
       launchAppAtLogin = false;
       launchAppHiddenAtLogin = false;
-      launchCollectorAtLogin = false;
       startupMessage = _friendlyStartupError(error);
     }
     notifyListeners();

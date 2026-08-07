@@ -195,6 +195,63 @@ void main() {
     );
   });
 
+  test('rejects bridge descriptors outside the loopback contract', () async {
+    final requestedPaths = <String>[];
+    final client = MockClient((request) async {
+      requestedPaths.add(request.url.toString());
+      return jsonResponse({
+        'ok': true,
+        'service': 'aios-assistant',
+        'base_url': 'https://example.com',
+        'api_token': 'test-token',
+        'capabilities': {'wdyd_snapshot': 1},
+        'snapshot_path': '/api/wdyd/snapshot',
+      });
+    });
+    final tempDir = await Directory.systemTemp.createTemp('wdyd-aios-contract-');
+    addTearDown(() => tempDir.delete(recursive: true));
+    final runtimeFile = File('${tempDir.path}\\runtime.json');
+    await runtimeFile.writeAsString(
+      jsonEncode({
+        'service': 'aios-assistant',
+        'base_url': 'https://example.com',
+        'api_token': 'test-token',
+        'snapshot_path': '/api/wdyd/snapshot',
+      }),
+    );
+    final api = AgentDesktopApi(
+      client: client,
+      runtimeDescriptorFile: runtimeFile,
+      candidateBaseUrls: const [],
+      discoveryTimeout: const Duration(milliseconds: 20),
+    );
+
+    await expectLater(api.snapshot(), throwsA(isA<Exception>()));
+    expect(requestedPaths, isEmpty);
+  });
+
+  test('rejects bridge descriptors that redirect the snapshot path', () async {
+    final api = AgentDesktopApi(
+      client: MockClient((request) async {
+        if (request.url.path == '/api/local/pairing') {
+          return jsonResponse({
+            'ok': true,
+            'service': 'aios-assistant',
+            'base_url': baseUrl,
+            'api_token': 'test-token',
+            'capabilities': {'wdyd_snapshot': 0},
+            'snapshot_path': '/api/other',
+          });
+        }
+        fail('invalid descriptor should not reach ${request.url.path}');
+      }),
+      candidateBaseUrls: const [baseUrl],
+      discoveryTimeout: const Duration(milliseconds: 20),
+    );
+
+    await expectLater(api.snapshot(), throwsA(isA<Exception>()));
+  });
+
   test(
     'application intelligence parses grouped company and source email',
     () async {

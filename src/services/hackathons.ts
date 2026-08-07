@@ -1,7 +1,6 @@
 import { AiosHackathon, Hackathon, HackathonDraft, HackathonFeed, PlacementFeed } from "../domain/hackathon";
 import { getAiosCandidateBaseUrls } from "./aios";
-
-const collectorBaseUrl = "http://127.0.0.1:17321";
+import { collectorFetch } from "./collector";
 
 type HackathonsResponse = {
   ok: boolean;
@@ -9,7 +8,7 @@ type HackathonsResponse = {
 };
 
 export async function fetchHackathons(): Promise<Hackathon[]> {
-  const response = await fetch(`${collectorBaseUrl}/hackathons`, {
+  const response = await collectorFetch("/hackathons", {
     cache: "no-store",
   });
 
@@ -24,7 +23,7 @@ export async function fetchHackathons(): Promise<Hackathon[]> {
 export async function saveHackathon(
   hackathon: HackathonDraft & { id?: string; timeline?: Hackathon["timeline"] },
 ): Promise<Hackathon> {
-  const response = await fetch(`${collectorBaseUrl}/hackathons/save`, {
+  const response = await collectorFetch("/hackathons/save", {
     body: JSON.stringify(hackathon),
     cache: "no-store",
     headers: {
@@ -46,7 +45,7 @@ export async function addHackathonTimelineEntry(
   hackathonId: string,
   note: string,
 ): Promise<Hackathon> {
-  const response = await fetch(`${collectorBaseUrl}/hackathons/timeline`, {
+  const response = await collectorFetch("/hackathons/timeline", {
     body: JSON.stringify({ hackathonId, note }),
     cache: "no-store",
     headers: {
@@ -65,7 +64,7 @@ export async function addHackathonTimelineEntry(
 }
 
 export async function deleteHackathon(hackathonId: string): Promise<void> {
-  const response = await fetch(`${collectorBaseUrl}/hackathons/delete`, {
+  const response = await collectorFetch("/hackathons/delete", {
     body: JSON.stringify({ hackathonId }),
     cache: "no-store",
     headers: {

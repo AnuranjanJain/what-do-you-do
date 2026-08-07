@@ -1,13 +1,15 @@
 {
   "name": "what-do-you-do",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "collector:dev": "node scripts/collector/local-activity-collector.mjs",
+    "desktop:package": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build-windows-release.ps1",
+    "desktop:package:smoke": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\smoke-windows-release.ps1",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build"
   },
