@@ -569,10 +569,8 @@ void main() {
     await controller.initialize();
 
     expect(controller.startupAvailable, isTrue);
-    expect(controller.collectorStartupAvailable, isTrue);
     expect(controller.launchAppAtLogin, isTrue);
     expect(controller.launchAppHiddenAtLogin, isTrue);
-    expect(controller.launchCollectorAtLogin, isFalse);
   });
 
   test('windows startup manager reads shortcut state', () async {
@@ -581,19 +579,14 @@ void main() {
     final tempDir = await Directory.systemTemp.createTemp('wdyd-startup-');
     addTearDown(() => tempDir.delete(recursive: true));
     await File('${tempDir.path}\\What Do You Do.lnk').writeAsString('');
-    final collectorLauncher = File('${tempDir.path}\\start-collector.ps1');
-    await collectorLauncher.writeAsString('');
 
     final state = await WindowsStartupManager(
       startupDirectory: tempDir,
-      collectorLauncherFile: collectorLauncher,
     ).load();
 
     expect(state.available, isTrue);
-    expect(state.collectorAvailable, isTrue);
     expect(state.launchApp, isTrue);
     expect(state.launchAppHidden, isFalse);
-    expect(state.launchCollector, isFalse);
   });
 }
 
@@ -661,10 +654,8 @@ class _FakeStartupManager extends StartupManager {
   @override
   Future<StartupState> load() async => const StartupState(
     available: true,
-    collectorAvailable: true,
     launchApp: true,
     launchAppHidden: true,
-    launchCollector: false,
     message: 'Startup test ready.',
   );
 }

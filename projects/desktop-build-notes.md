@@ -60,10 +60,17 @@ Runtime data:
 
 ## Release artifact
 
-The distributable release should zip the full Flutter release directory plus
-the install helper files. The `.exe` alone is included for inspection, but the
-ZIP is the usable app package because the executable requires the adjacent
-Flutter DLL and data directory.
+From the repository root, build and verify the complete release package:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows-release.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-windows-release.ps1
+```
+
+The package contains the full Flutter release directory, installer,
+uninstaller, a release manifest, and SHA-256 checksums. The `.exe` alone is
+included for inspection, but the ZIP is the usable app package because the
+executable requires the adjacent Flutter DLL and data directory.
 
 Recommended asset name:
 

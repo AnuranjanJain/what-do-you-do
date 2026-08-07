@@ -30,8 +30,8 @@
 
 ## The Vibe
 
-This branch is the installed **Windows-native Flutter app**. It owns its packaged
-collector, reads local activity, and talks to AiOS through loopback-only approved
+This branch is the installed **Windows-native Flutter app**. It owns its native
+in-process collector, reads local activity, and talks to AiOS through loopback-only approved
 summaries. No Vite server or browser dashboard is required on Windows.
 
 The Linux/browser implementation is preserved on the
@@ -76,6 +76,22 @@ No screenshots, keystrokes, private messages, raw browser history, or full notes
 
 ## Install It On Windows
 
+Create a complete, hashable Windows package:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows-release.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-windows-release.ps1
+```
+
+The output is a ZIP containing the Flutter DLL/data payload, installer,
+uninstaller, `release-manifest.json`, and SHA-256 checksums. Install it with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\dist\windows\What-Do-You-Do-Windows-v1.0.1\Install-WhatDoYouDo.ps1
+```
+
+For a direct development install from a local Flutter build:
+
 ```powershell
 cd flutter_app
 C:\Users\anura\development\flutter\bin\flutter.bat build windows --release
@@ -91,7 +107,7 @@ In **Settings**, Windows users can enable:
 
 - launch the app at sign-in
 - open the app in the background tray at sign-in
-- run native activity collection inside the app process
+- collect activity natively inside the app process
 - hide the window to the tray or fully exit the app
 
 For Windows development:
