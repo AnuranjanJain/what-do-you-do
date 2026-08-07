@@ -19,9 +19,17 @@ if (-not (Test-Path -LiteralPath $sourceExe)) {
   throw "Release package is missing app\$exeName"
 }
 
-Get-Process what_do_you_do -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
-  Where-Object { $_.CommandLine -like "*local-activity-collector.mjs*" } |
+$managedRoots = @($sourceExe, $installDir) | ForEach-Object {
+  [System.IO.Path]::GetFullPath($_).TrimEnd('\') + '\'
+}
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object {
+    $process = $_
+    $process.Name -eq $exeName -and $process.ExecutablePath -and
+      (($managedRoots | Where-Object {
+        $process.ExecutablePath.StartsWith($_, [StringComparison]::OrdinalIgnoreCase)
+      }).Count -gt 0)
+  } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Milliseconds 500
 

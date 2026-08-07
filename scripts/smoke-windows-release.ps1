@@ -26,6 +26,10 @@ if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'app\what_do_you_do.exe
 if (Test-Path -LiteralPath (Join-Path $packageRoot 'app\start-collector.ps1')) {
   throw 'Obsolete start-collector.ps1 must not ship with the native app.'
 }
+$installerText = Get-Content -LiteralPath (Join-Path $packageRoot 'Install-WhatDoYouDo.ps1') -Raw
+if ($installerText -match 'Get-Process\s+what_do_you_do') {
+  throw 'Installer must scope process shutdown to the managed executable path.'
+}
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if ($manifest.runtime -ne 'flutter-windows-native') { throw 'Unexpected runtime in release manifest.' }

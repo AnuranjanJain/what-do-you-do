@@ -7,6 +7,15 @@ $startupAppShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Progr
 $startupCollectorShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\What Do You Do Collector.lnk"
 $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\What Do You Do Flutter"
 
+$managedRoot = [System.IO.Path]::GetFullPath($installDir).TrimEnd('\') + '\'
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object {
+    $_.Name -eq 'what_do_you_do.exe' -and $_.ExecutablePath -and
+      $_.ExecutablePath.StartsWith($managedRoot, [StringComparison]::OrdinalIgnoreCase)
+  } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Milliseconds 300
+
 Remove-Item -LiteralPath $desktopShortcut -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $startMenuShortcut -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $startupAppShortcut -Force -ErrorAction SilentlyContinue
