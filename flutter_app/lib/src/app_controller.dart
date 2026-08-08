@@ -81,12 +81,6 @@ class AppController extends ChangeNotifier {
     final agentFuture = _loadAgentSnapshot();
     try {
       final collectorHealth = await _api.health();
-      if (collectorHealth['ok'] != true) {
-        throw StateError(
-          collectorHealth['lastError']?.toString() ??
-              'Collector is online but has not produced a valid activity snapshot.',
-        );
-      }
       final response = await _api.sessions(selectedDate);
       List<Hackathon> loadedHackathons = hackathons;
       try {
@@ -95,19 +89,25 @@ class AppController extends ChangeNotifier {
         // Activity remains usable if the optional board cannot be loaded.
       }
 
-      collectorOnline = true;
+      collectorOnline = collectorHealth['ok'] == true;
       activeDate = response.activeDateKey;
       availableDates = response.availableDates;
       sessions = response.sessions;
       hackathons = loadedHackathons;
-      message = sessions.isEmpty
-          ? 'No activity recorded for $selectedDate.'
-          : '${sessions.length} private local sessions loaded.';
+      if (collectorOnline) {
+        message = sessions.isEmpty
+            ? 'No activity recorded for $selectedDate.'
+            : '${sessions.length} private local sessions loaded.';
+      } else {
+        message = sessions.isEmpty
+            ? 'Collector is offline. Start it to record new activity.'
+            : 'Collector is offline. Showing ${sessions.length} saved local sessions.';
+      }
     } catch (_) {
       collectorOnline = false;
-      sessions = const [];
-      message =
-          'Collector is offline. Start the local collector to show real data.';
+      message = sessions.isEmpty
+          ? 'Collector is offline. Start it to show real data.'
+          : 'Collector is reconnecting. Showing the last saved local sessions.';
     } finally {
       agent = await agentFuture;
       loading = false;

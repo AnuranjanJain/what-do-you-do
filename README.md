@@ -103,6 +103,24 @@ After install, Windows Search should find **What Do You Do** from the Start Menu
 Launch the installed app directly. Do not run `npm run dev` or keep a browser
 window open. Google/email intelligence remains owned by the installed AiOS app.
 
+### First five minutes
+
+1. Open **What Do You Do** and leave it running for a minute so the native
+   collector can create the first local session.
+2. Open **AI Agent** from the sidebar. If AiOS is not connected, use **Open
+   AiOS**; WDYD pairs with the installed companion automatically over loopback.
+3. In AiOS, connect Gmail accounts and run **Sync now**. WDYD will show the
+   resulting planner, applications, reminders, PAT, and project summaries.
+4. Return to WDYD and use **AI Agent -> Sync now** whenever you want an
+   immediate refresh. Background refresh continues while both apps are open.
+5. In Settings, enable sign-in startup and tray mode if you want both local
+   services ready after Windows login.
+
+The dashboard shows a setup checklist when a connector is missing. It is safe
+to use WDYD before Gmail is connected: local activity tracking still works, and
+the app keeps the last saved local timeline visible during a temporary service
+restart instead of replacing it with fake data.
+
 In **Settings**, Windows users can enable:
 
 - launch the app at sign-in

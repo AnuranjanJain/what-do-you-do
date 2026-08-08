@@ -344,10 +344,13 @@ class AgentDesktopApi {
       throw _AgentHttpException(401, path, 'AiOS Desktop is locked.');
     }
     if (response.statusCode != 200) {
+      final detail = _responseErrorMessage(response.body);
       throw _AgentHttpException(
         response.statusCode,
         path,
-        'AiOS Desktop responded with ${response.statusCode}.',
+        detail == null
+            ? 'AiOS Desktop responded with ${response.statusCode}.'
+            : 'AiOS could not complete $path: $detail',
       );
     }
 
@@ -460,6 +463,18 @@ class AgentDesktopApi {
   static File _defaultSnapshotCacheFile() {
     final root = Platform.environment['LOCALAPPDATA'] ?? Directory.current.path;
     return File('$root\\What Do You Do\\aios-snapshot-cache.json');
+  }
+}
+
+String? _responseErrorMessage(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    if (decoded is! Map) return null;
+    final message = decoded['message'] ?? decoded['error'] ?? decoded['detail'];
+    final text = message?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  } on FormatException {
+    return null;
   }
 }
 

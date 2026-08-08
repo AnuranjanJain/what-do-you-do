@@ -166,6 +166,43 @@ void main() {
     expect(snapshot.college.emailsScanned, 0);
   });
 
+  test(
+    'surfaces structured local API errors instead of a generic status',
+    () async {
+      final api = AgentDesktopApi(
+        client: MockClient((request) async {
+          if (request.url.path == '/api/local/pairing') {
+            return jsonResponse({
+              'ok': true,
+              'service': 'aios-assistant',
+              'base_url': baseUrl,
+              'api_token': 'test-token',
+            });
+          }
+          return http.Response(
+            jsonEncode({
+              'ok': false,
+              'error': 'origin_not_allowed',
+              'message': 'The request came from an untrusted local window.',
+            }),
+            403,
+            headers: const {'content-type': 'application/json'},
+          );
+        }),
+        candidateBaseUrls: const [baseUrl],
+      );
+
+      await expectLater(
+        api.syncIntelligence(),
+        throwsA(
+          predicate<Object>(
+            (error) => error.toString().contains('untrusted local window'),
+          ),
+        ),
+      );
+    },
+  );
+
   test('core HTML response names the failing AiOS endpoint', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/local/pairing') {
@@ -208,7 +245,9 @@ void main() {
         'snapshot_path': '/api/wdyd/snapshot',
       });
     });
-    final tempDir = await Directory.systemTemp.createTemp('wdyd-aios-contract-');
+    final tempDir = await Directory.systemTemp.createTemp(
+      'wdyd-aios-contract-',
+    );
     addTearDown(() => tempDir.delete(recursive: true));
     final runtimeFile = File('${tempDir.path}\\runtime.json');
     await runtimeFile.writeAsString(

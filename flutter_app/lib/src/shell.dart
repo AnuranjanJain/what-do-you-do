@@ -379,6 +379,13 @@ class DashboardPage extends StatelessWidget {
           _DateStrip(controller: controller),
           const SizedBox(height: 14),
           _IntelligenceStrip(intelligence: controller.agent.intelligence),
+          if (!controller.agent.connected ||
+              controller.agent.stale ||
+              (controller.agent.readiness.hasItems &&
+                  !controller.agent.readiness.allReady)) ...[
+            const SizedBox(height: 14),
+            _DashboardSetupPanel(controller: controller),
+          ],
           const SizedBox(height: 14),
           _EmailIntelligenceOverview(portfolio: controller.agent.applications),
           const SizedBox(height: 14),
@@ -470,6 +477,91 @@ class DashboardPage extends StatelessWidget {
                         .map((session) => _TimelineTile(session: session))
                         .toList(),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardSetupPanel extends StatelessWidget {
+  const _DashboardSetupPanel({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final agent = controller.agent;
+    final readiness = agent.readiness;
+    final pending = readiness.items.where((item) => !item.ok).take(3).toList();
+    final title = !agent.connected
+        ? 'Connect AiOS to unlock planning'
+        : agent.stale
+        ? 'AiOS is reconnecting'
+        : '${readiness.ready}/${readiness.total} systems ready';
+
+    return _Panel(
+      eyebrow: 'Quick setup',
+      title: title,
+      trailing: agent.connected
+          ? Chip(
+              avatar: Icon(
+                agent.stale ? Icons.sync_problem_rounded : Icons.tune_rounded,
+                size: 15,
+              ),
+              label: Text(agent.stale ? 'Saved locally' : 'Setup needed'),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            !agent.connected
+                ? 'Local activity tracking works on its own. Open AiOS once to connect Gmail, planner rows, project context, and local AI status.'
+                : agent.stale
+                ? agent.message
+                : 'Finish the items below to make daily planning and email intelligence useful in real life.',
+            style: const TextStyle(color: Colors.grey, height: 1.35),
+          ),
+          if (pending.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (final item in pending)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.radio_button_unchecked, size: 17),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${item.label}: ${item.action}',
+                        style: const TextStyle(fontSize: 12, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: controller.openAiOS,
+                icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                label: Text(
+                  agent.connected ? 'Open AiOS settings' : 'Open AiOS',
+                ),
+              ),
+              if (agent.connected)
+                OutlinedButton.icon(
+                  onPressed: controller.syncIntelligence,
+                  icon: const Icon(Icons.sync_rounded, size: 17),
+                  label: const Text('Sync now'),
+                ),
+            ],
           ),
         ],
       ),
